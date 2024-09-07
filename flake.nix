@@ -26,7 +26,6 @@
             SDL2_image
             SDL2_ttf
             SDL2_mixer
-            libcfg
             libtcod
           ];
           shellHook = ''
