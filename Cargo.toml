@@ -1,0 +1,9 @@
+[package]
+name = "rustyrogue"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = "0.28.1"
+sdl2 = "0.37.0"
+tcod = "0.15.0"
