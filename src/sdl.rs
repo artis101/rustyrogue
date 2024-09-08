@@ -1,7 +1,7 @@
 use crate::game::Game;
+use crate::tile::Tile;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::video::FullscreenType;
 use std::io;
@@ -81,7 +81,7 @@ impl SDL {
     }
 
     fn draw(&mut self, game: &Game) -> Result<(), io::Error> {
-        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
+        self.canvas.set_draw_color(Tile::Empty.color());
         self.canvas.clear();
 
         let (width, height) = self
@@ -101,15 +101,7 @@ impl SDL {
 
         for (y, row) in map.iter().enumerate() {
             for (x, &tile) in row.iter().enumerate() {
-                let color = match tile {
-                    '#' => Color::RGB(100, 100, 100), // Wall
-                    '@' => Color::RGB(255, 255, 0),   // Player
-                    '.' => Color::RGB(50, 50, 50),    // Floor
-                    '+' => Color::RGB(150, 75, 0),    // Door
-                    _ => Color::RGB(0, 0, 0),         // Unknown
-                };
-
-                self.canvas.set_draw_color(color);
+                self.canvas.set_draw_color(tile.color());
                 self.canvas
                     .fill_rect(Rect::new(
                         (x as u32 * tile_size + offset_x) as i32,
@@ -135,6 +127,3 @@ impl SDL {
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 }
-
-
-

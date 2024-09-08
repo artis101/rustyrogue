@@ -1,6 +1,7 @@
 mod game;
 mod map;
 mod sdl;
+mod tile;
 mod tui;
 
 use game::Game;

@@ -1,10 +1,12 @@
 use crate::map::Map;
+use crate::tile::Tile;
 use std::io;
 
 pub struct Game {
     map: Map,
     player_x: usize,
     player_y: usize,
+    previous_tile: Tile,
 }
 
 impl Game {
@@ -15,6 +17,7 @@ impl Game {
             map,
             player_x,
             player_y,
+            previous_tile: Tile::Floor,
         })
     }
 
@@ -27,14 +30,24 @@ impl Game {
             .min((self.map.height() - 1) as i32) as usize;
 
         if self.map.is_walkable(new_x, new_y) {
-            self.map.set_tile(self.player_x, self.player_y, '.');
+            // Restore the previous tile
+            self.map
+                .set_tile(self.player_x, self.player_y, self.previous_tile);
+
+            // Store the new tile before moving onto it
+            self.previous_tile = self.map.get_tile(new_x, new_y);
+
+            // Update player position
             self.player_x = new_x;
             self.player_y = new_y;
-            self.map.set_tile(self.player_x, self.player_y, '@');
+
+            // Place the player on the new tile
+            self.map
+                .set_tile(self.player_x, self.player_y, Tile::Player);
         }
     }
 
-    pub fn get_map(&self) -> &Vec<Vec<char>> {
+    pub fn get_map(&self) -> &Vec<Vec<Tile>> {
         self.map.get_tiles()
     }
 
@@ -47,7 +60,7 @@ impl Game {
             let y = (self.player_y as i32 + dy)
                 .max(0)
                 .min((self.map.height() - 1) as i32) as usize;
-            if self.map.get_tile(x, y) == '+' {
+            if self.map.get_tile(x, y) == Tile::Door {
                 return Some(format!("Door found at ({}, {})", x, y));
             }
         }

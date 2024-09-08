@@ -1,4 +1,5 @@
 use crate::game::Game;
+use crate::tile::Tile;
 use crossterm::{
     event::{self, KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -9,7 +10,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Paragraph, Widget},
+    widgets::{Block, BorderType, Borders, Paragraph},
     Terminal,
 };
 use std::io;
@@ -31,11 +32,9 @@ impl TUI {
 
     pub fn run(&mut self, game: &mut Game) -> Result<(), io::Error> {
         loop {
-            // Prepare the widgets outside the closure
             let map_widget = Self::prepare_map_widget(game);
             let info_widget = Self::prepare_info_widget(game);
 
-            // Now we can borrow `self.terminal` mutably inside the closure without issues
             self.terminal.draw(|f| {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
@@ -70,17 +69,9 @@ impl TUI {
             .map(|row| {
                 Line::from(
                     row.iter()
-                        .map(|&tile| match tile {
-                            '#' => Span::styled("#", Style::default().fg(Color::White)),
-                            '@' => Span::styled(
-                                "@",
-                                Style::default()
-                                    .fg(Color::Yellow)
-                                    .add_modifier(Modifier::BOLD),
-                            ),
-                            '.' => Span::styled(".", Style::default().fg(Color::DarkGray)),
-                            '+' => Span::styled("+", Style::default().fg(Color::Red)),
-                            _ => Span::raw(" "),
+                        .map(|&tile| {
+                            let style = Style::default().fg(tile.term_color());
+                            Span::styled(tile.symbol().to_string(), style)
                         })
                         .collect::<Vec<Span>>(),
                 )
@@ -121,4 +112,3 @@ impl Drop for TUI {
             .unwrap();
     }
 }
-
