@@ -26,7 +26,7 @@
             SDL2_image
             SDL2_ttf
             SDL2_mixer
-            libtcod
+            # libtcod
           ];
           shellHook = ''
             echo "Rust roguelike development environment"
