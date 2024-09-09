@@ -27,6 +27,7 @@
             SDL2_ttf
             SDL2_mixer
             # libtcod
+            zsh
           ];
           shellHook = ''
             echo "Rust roguelike development environment"
@@ -34,6 +35,7 @@
             rustc --version
             cargo --version
             echo "-------------------------------------"
+            exec zsh
           '';
           RUST_SRC_PATH = "${rustVersion}/lib/rustlib/src/rust/library";
         };

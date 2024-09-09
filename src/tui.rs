@@ -106,7 +106,7 @@ impl Tui {
                     .border_type(BorderType::Rounded)
                     .title("Rustyrogue"),
             )
-            .style(Style::default().bg(Color::Black))
+            .style(Style::default())
     }
 
     fn prepare_inventory_widget(game: &Game) -> InventoryWidget {

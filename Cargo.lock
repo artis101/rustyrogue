@@ -271,6 +271,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "randlib"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46f1ef1c0b575dd1f934699bf1187d78fd6c28aff449aa49ad7290dc9596d141"
+
+[[package]]
 name = "ratatui"
 version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -324,6 +330,7 @@ name = "rustyrogue"
 version = "0.1.0"
 dependencies = [
  "crossterm",
+ "randlib",
  "ratatui",
  "sdl2",
 ]

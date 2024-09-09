@@ -13,8 +13,8 @@ pub enum Tile {
     Player,
     // interactable tiles
     Door { open: bool },
-    Secret,     // secrets reveal themselves when you interact
-    SecretTile, // secret tiles reveal themeselves when you step on them
+    Secret,      // secrets reveal themselves when you interact
+    SecretFloor, // secret tiles reveal themeselves when you step on them
     // deadly tiles
     Pit, // falling into a pit kills the player
     // empty
@@ -28,7 +28,7 @@ impl Tile {
             Tile::Stairs { up: false } => '>',
             Tile::Stairs { up: true } => '<',
             Tile::Wall => '#',
-            Tile::Floor | Tile::SecretTile => '·',
+            Tile::Floor | Tile::SecretFloor => '·',
             Tile::Player => '@',
             Tile::Door { open: true } => '+',
             Tile::Door { open: false } => '/',
@@ -43,21 +43,28 @@ impl Tile {
             Tile::Archway { .. } => RatatuiColor::LightCyan,
             Tile::Stairs { up: false } => RatatuiColor::DarkGray,
             Tile::Stairs { up: true } => RatatuiColor::Gray,
-            Tile::Wall => RatatuiColor::Gray,
-            Tile::Floor | Tile::SecretTile => RatatuiColor::DarkGray,
+            Tile::Wall => RatatuiColor::DarkGray,
+            Tile::Floor | Tile::SecretFloor => RatatuiColor::DarkGray,
             Tile::Player => RatatuiColor::Cyan,
             Tile::Door { open: true } => RatatuiColor::LightYellow,
             Tile::Door { open: false } => RatatuiColor::LightYellow,
             Tile::Pit => RatatuiColor::DarkGray,
             Tile::Secret => RatatuiColor::Yellow,
-            Tile::Empty => RatatuiColor::Black,
+            Tile::Empty => RatatuiColor::Reset,
         }
     }
 
     pub fn term_bg(&self) -> RatatuiColor {
         match self {
-            Tile::Wall => RatatuiColor::White,
-            _ => RatatuiColor::Black,
+            Tile::Wall => RatatuiColor::Gray,
+            Tile::Floor
+            | Tile::Player
+            | Tile::Archway { .. }
+            | Tile::Door { .. }
+            | Tile::Secret
+            | Tile::Pit
+            | Tile::SecretFloor => RatatuiColor::Black,
+            _ => RatatuiColor::Reset,
         }
     }
 
@@ -66,7 +73,7 @@ impl Tile {
             Tile::Archway { .. } => SDLColor::RGB(0, 255, 255),
             Tile::Stairs { up: false } => SDLColor::RGB(100, 100, 100),
             Tile::Stairs { up: true } => SDLColor::RGB(150, 150, 150),
-            Tile::Wall | Tile::SecretTile => SDLColor::RGB(255, 255, 255),
+            Tile::Wall | Tile::SecretFloor => SDLColor::RGB(255, 255, 255),
             Tile::Floor => SDLColor::RGB(50, 50, 50),
             Tile::Player => SDLColor::RGB(255, 255, 0),
             Tile::Door { open: true } => SDLColor::RGB(150, 75, 0),
@@ -98,7 +105,7 @@ impl Tile {
             '/' => Tile::Door { open: false },
             'V' => Tile::Pit,
             '?' => Tile::Secret,
-            '_' => Tile::SecretTile,
+            '_' => Tile::SecretFloor,
             _ => Tile::Empty,
         }
     }
