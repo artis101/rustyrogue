@@ -127,8 +127,6 @@ impl TUI {
             ]),
         ])
         .gray();
-        let xp_progress = (player.exp as f32 / player.xp_for_next_level() as f32) * 100.0;
-        let xp_progress_bar = 
 
         Paragraph::new(player_info)
             .block(
