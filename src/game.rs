@@ -1,43 +1,7 @@
 use crate::map::Map;
+use crate::player::Player;
 use crate::tile::Tile;
 use std::io;
-
-pub struct Player {
-    pub level: u32,
-    pub exp: u32,
-    pub max_hp: u32,
-    pub current_hp: u32,
-    pub strength: u32,
-    pub defense: u32,
-}
-
-impl Player {
-    fn new() -> Self {
-        Player {
-            level: 1,
-            exp: 0,
-            max_hp: 20,
-            current_hp: 20,
-            strength: 5,
-            defense: 2,
-        }
-    }
-
-    fn gain_exp(&mut self, amount: u32) {
-        self.exp += amount;
-        if self.exp >= self.level * 100 {
-            self.level_up();
-        }
-    }
-
-    fn level_up(&mut self) {
-        self.level += 1;
-        self.max_hp += 5;
-        self.current_hp = self.max_hp;
-        self.strength += 1;
-        self.defense += 1;
-    }
-}
 
 pub struct Game {
     map: Map,
@@ -117,18 +81,5 @@ impl Game {
 
     pub fn get_player(&self) -> &Player {
         &self.player
-    }
-
-    pub fn get_player_stats(&self) -> String {
-        format!(
-            "Level: {} | EXP: {} | HP: {}/{} | STR: {} | DEF: {} | Turns: {}",
-            self.player.level,
-            self.player.exp,
-            self.player.current_hp,
-            self.player.max_hp,
-            self.player.strength,
-            self.player.defense,
-            self.turns
-        )
     }
 }

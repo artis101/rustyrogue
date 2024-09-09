@@ -70,10 +70,10 @@ impl TUI {
                     if key.kind == KeyEventKind::Press {
                         match key.code {
                             KeyCode::Char('q') => return Ok(()),
-                            KeyCode::Left => game.move_player(-1, 0),
-                            KeyCode::Right => game.move_player(1, 0),
-                            KeyCode::Up => game.move_player(0, -1),
-                            KeyCode::Down => game.move_player(0, 1),
+                            KeyCode::Left | KeyCode::Char('h') => game.move_player(-1, 0),
+                            KeyCode::Right | KeyCode::Char('l') => game.move_player(1, 0),
+                            KeyCode::Up | KeyCode::Char('k') => game.move_player(0, -1),
+                            KeyCode::Down | KeyCode::Char('j') => game.move_player(0, 1),
                             _ => {}
                         }
                     }
@@ -114,12 +114,21 @@ impl TUI {
             "Player Info".into(),
             Line::from(vec![
                 "HP: ".into(),
-                player.current_hp.to_string().red(),
+                player.colored_hp(),
                 "/".into(),
-                player.max_hp.to_string().red(),
+                player.max_hp.to_string().gray(),
+            ]),
+            Line::from(vec!["Level: ".into(), player.level.to_string().cyan()]),
+            Line::from(vec![
+                "Exp: ".into(),
+                player.exp.to_string().green(),
+                "/".into(),
+                player.xp_for_next_level().to_string().gray(),
             ]),
         ])
         .gray();
+        let xp_progress = (player.exp as f32 / player.xp_for_next_level() as f32) * 100.0;
+        let xp_progress_bar = 
 
         Paragraph::new(player_info)
             .block(

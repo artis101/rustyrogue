@@ -9,6 +9,8 @@ pub enum DoorState {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Tile {
+    Archway { locked: bool },
+    Stairs { up: bool },
     Wall,
     Floor,
     Player,
@@ -19,6 +21,9 @@ pub enum Tile {
 impl Tile {
     pub fn symbol(&self) -> char {
         match self {
+            Tile::Archway { .. } => '∩',
+            Tile::Stairs { up: false } => '>',
+            Tile::Stairs { up: true } => '<',
             Tile::Wall => '#',
             Tile::Floor => '.',
             Tile::Player => '@',
@@ -34,6 +39,9 @@ impl Tile {
 
     pub fn term_fg(&self) -> RatatuiColor {
         match self {
+            Tile::Archway { .. } => RatatuiColor::LightCyan,
+            Tile::Stairs { up: false } => RatatuiColor::DarkGray,
+            Tile::Stairs { up: true } => RatatuiColor::Gray,
             Tile::Wall => RatatuiColor::Gray,
             Tile::Floor => RatatuiColor::DarkGray,
             Tile::Player => RatatuiColor::Cyan,
@@ -49,6 +57,9 @@ impl Tile {
 
     pub fn term_bg(&self) -> RatatuiColor {
         match self {
+            Tile::Archway { .. } => RatatuiColor::Black,
+            Tile::Stairs { up: false } => RatatuiColor::Black,
+            Tile::Stairs { up: true } => RatatuiColor::Black,
             Tile::Wall => RatatuiColor::White,
             Tile::Floor => RatatuiColor::Black,
             Tile::Player => RatatuiColor::Black,
@@ -64,6 +75,9 @@ impl Tile {
 
     pub fn color(&self) -> SDLColor {
         match self {
+            Tile::Archway { .. } => SDLColor::RGB(0, 255, 255),
+            Tile::Stairs { up: false } => SDLColor::RGB(100, 100, 100),
+            Tile::Stairs { up: true } => SDLColor::RGB(150, 150, 150),
             Tile::Wall => SDLColor::RGB(255, 255, 255),
             Tile::Floor => SDLColor::RGB(50, 50, 50),
             Tile::Player => SDLColor::RGB(255, 255, 0),
@@ -80,13 +94,16 @@ impl Tile {
     pub fn is_walkable(&self) -> bool {
         match self {
             Tile::Wall => false,
-            // Tile::Wall | Tile::Door => false,
+            Tile::Archway { locked } => !locked,
             _ => true,
         }
     }
 
     pub fn from_char(c: char) -> Self {
         match c {
+            '∩' => Tile::Archway { locked: true },
+            '>' => Tile::Stairs { up: false },
+            '<' => Tile::Stairs { up: true },
             '#' => Tile::Wall,
             '.' => Tile::Floor,
             '@' => Tile::Player,

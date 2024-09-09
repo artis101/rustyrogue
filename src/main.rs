@@ -1,5 +1,6 @@
 mod game;
 mod map;
+mod player;
 mod sdl;
 mod tile;
 mod tui;
