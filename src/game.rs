@@ -29,16 +29,22 @@ impl Game {
         let full_map_file = format!("maps/{}.txt", map_file);
         let map_hint_file = format!("maps/{}_hint.txt", map_file);
         let map = Map::load(&full_map_file, &map_hint_file)?;
+        let player = Player::new();
         let (player_x, player_y) = map.find_player().unwrap_or((1, 1));
-        Ok(Game {
+        let mut game = Game {
             map,
-            player: Player::new(),
+            player,
             player_x,
             player_y,
-            previous_tile: Tile::Floor,
+            previous_tile: Tile::Floor { visible: false },
             turns: 0,
             log_messages: Vec::with_capacity(5),
-        })
+        };
+
+        // Perform initial FOV update
+        game.update_fov();
+
+        Ok(game)
     }
 
     pub fn move_player(&mut self, dx: i32, dy: i32) {
@@ -65,12 +71,20 @@ impl Game {
             self.map
                 .set_tile(self.player_x, self.player_y, Tile::Player);
 
+            self.update_fov();
+
             // Increment turn counter
             self.turns += 1;
 
             // Simulate gaining experience (you can modify this logic later)
             self.player.gain_exp(1);
         }
+    }
+
+    fn update_fov(&mut self) {
+        let fov_radius = self.player.fov_radius;
+        self.map
+            .update_fov(self.player_x, self.player_y, fov_radius);
     }
 
     pub fn get_map(&self) -> &Vec<Vec<Tile>> {
@@ -127,8 +141,9 @@ impl Game {
 
             if self.map.is_interactable(new_x, new_y) {
                 self.map.interact_tile(new_x, new_y);
+                self.update_fov(); // upddate FOV after interacting to reveal hidden tiles
 
-                if let Tile::Door { open } = self.map.get_tile(new_x, new_y) {
+                if let Tile::Door { open, .. } = self.map.get_tile(new_x, new_y) {
                     if open {
                         self.log_info_message("You close the door".to_string());
                     } else {

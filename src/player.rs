@@ -5,6 +5,7 @@ pub struct Player {
     pub current_hp: u32,
     pub strength: u32,
     pub defense: u32,
+    pub fov_radius: u32,
 }
 
 impl Player {
@@ -16,6 +17,7 @@ impl Player {
             current_hp: 20,
             strength: 5,
             defense: 2,
+            fov_radius: 4,
         }
     }
 
