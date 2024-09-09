@@ -1,5 +1,6 @@
 use crate::game::Game;
 use crate::tile::Tile;
+use crate::widgets::inventory::InventoryWidget;
 use crossterm::{
     event::{self, KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -8,19 +9,18 @@ use crossterm::{
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
-    prelude::Stylize,
     style::{Color, Style},
-    text::{Line, Span, Text},
+    text::{Line, Span},
     widgets::{Block, BorderType, Borders, Paragraph},
     Terminal,
 };
 use std::io;
 
-pub struct TUI {
+pub struct Tui {
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
 }
 
-impl TUI {
+impl Tui {
     pub fn new() -> Result<Self, io::Error> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
@@ -28,7 +28,7 @@ impl TUI {
         let backend = CrosstermBackend::new(stdout);
         let terminal = Terminal::new(backend)?;
 
-        Ok(TUI { terminal })
+        Ok(Tui { terminal })
     }
 
     pub fn run(&mut self, game: &mut Game) -> Result<(), io::Error> {
@@ -43,7 +43,7 @@ impl TUI {
                     .constraints(
                         [
                             Constraint::Min(0),    // For Map and Info
-                            Constraint::Length(3), // For Log
+                            Constraint::Length(6), // For Log
                         ]
                         .as_ref(),
                     )
@@ -108,34 +108,8 @@ impl TUI {
             .style(Style::default().bg(Color::Black))
     }
 
-    fn prepare_inventory_widget(game: &Game) -> Paragraph<'static> {
-        let player = game.get_player();
-        let player_info = Text::from(vec![
-            "Player Info".into(),
-            Line::from(vec![
-                "HP: ".into(),
-                player.colored_hp(),
-                "/".into(),
-                player.max_hp.to_string().gray(),
-            ]),
-            Line::from(vec!["Level: ".into(), player.level.to_string().cyan()]),
-            Line::from(vec![
-                "Exp: ".into(),
-                player.exp.to_string().green(),
-                "/".into(),
-                player.xp_for_next_level().to_string().gray(),
-            ]),
-        ])
-        .gray();
-
-        Paragraph::new(player_info)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .title("Inventory"),
-            )
-            .style(Style::default().fg(Color::LightBlue))
+    fn prepare_inventory_widget(game: &Game) -> InventoryWidget {
+        InventoryWidget::new(game)
     }
 
     fn prepare_game_log_widget(game: &Game) -> Paragraph<'static> {
@@ -154,7 +128,7 @@ impl TUI {
     }
 }
 
-impl Drop for TUI {
+impl Drop for Tui {
     fn drop(&mut self) {
         disable_raw_mode().unwrap();
         self.terminal

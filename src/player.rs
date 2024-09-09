@@ -39,6 +39,11 @@ impl Player {
         self.current_hp = self.max_hp;
         self.strength += 1;
         self.defense += 1;
+        self.exp = 0;
+    }
+
+    pub fn take_damage(&mut self, amount: u32) {
+        self.current_hp = self.current_hp.saturating_sub(amount);
     }
 
     pub fn colored_hp(&self) -> Span<'static> {

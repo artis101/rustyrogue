@@ -4,12 +4,13 @@ mod player;
 mod sdl;
 mod tile;
 mod tui;
+mod widgets;
 
 use game::Game;
 use sdl::SDL;
 use std::env;
 use std::io;
-use tui::TUI;
+use tui::Tui;
 
 fn main() -> Result<(), io::Error> {
     // Parse command-line arguments
@@ -24,8 +25,8 @@ fn main() -> Result<(), io::Error> {
         let mut sdl = SDL::new()?;
         sdl.run(&mut game)?;
     } else {
-        // Run the game with TUI renderer (default)
-        let mut tui = TUI::new()?;
+        // Run the game with Tui renderer (default)
+        let mut tui = Tui::new()?;
         tui.run(&mut game)?;
     }
 

@@ -29,10 +29,10 @@ impl Tile {
             Tile::Player => '@',
             Tile::Door {
                 state: DoorState::Open,
-            } => '/',
+            } => '+',
             Tile::Door {
                 state: DoorState::Closed,
-            } => '+',
+            } => '/',
             Tile::Empty => ' ',
         }
     }
@@ -95,6 +95,7 @@ impl Tile {
         match self {
             Tile::Wall => false,
             Tile::Archway { locked } => !locked,
+            Tile::Door { state } => *state == DoorState::Open,
             _ => true,
         }
     }
