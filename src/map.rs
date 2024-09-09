@@ -171,7 +171,7 @@ impl Map {
             Tile::Pit { .. } => Tile::Pit { visible },
             Tile::Secret { .. } => Tile::Secret { visible },
             Tile::SecretFloor { .. } => Tile::SecretFloor { visible },
-            Tile::Door { open, visible } => Tile::Door { open, visible },
+            Tile::Door { open, .. } => Tile::Door { open, visible },
             // Update other tile types as needed
             _ => tile,
         };

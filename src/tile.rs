@@ -55,8 +55,8 @@ impl Tile {
                 }
             }
             Tile::Player => RatatuiColor::Cyan,
-            Tile::Door { open: true, .. } => RatatuiColor::LightYellow,
-            Tile::Door { open: false, .. } => RatatuiColor::LightYellow,
+            Tile::Door { visible: true, .. } => RatatuiColor::LightYellow,
+            Tile::Door { visible: false, .. } => RatatuiColor::Yellow,
             Tile::Secret { visible: false } => RatatuiColor::Yellow,
             Tile::Secret { visible: true } => RatatuiColor::LightYellow,
             Tile::Empty => RatatuiColor::Reset,
