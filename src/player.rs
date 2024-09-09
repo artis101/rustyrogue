@@ -14,7 +14,7 @@ impl Player {
             level: 1,
             exp: 0,
             max_hp: 20,
-            current_hp: 20,
+            current_hp: 2,
             strength: 5,
             defense: 2,
             fov_radius: 4,
@@ -43,5 +43,9 @@ impl Player {
 
     pub fn take_damage(&mut self, amount: u32) {
         self.current_hp = self.current_hp.saturating_sub(amount);
+    }
+
+    pub fn is_dead(&self) -> bool {
+        self.current_hp == 0
     }
 }

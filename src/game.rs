@@ -68,8 +68,11 @@ impl Game {
             self.player_y = new_y;
 
             // Place the player on the new tile
-            self.map
-                .set_tile(self.player_x, self.player_y, Tile::Player);
+            self.map.set_tile(
+                self.player_x,
+                self.player_y,
+                Tile::Player { is_dead: false },
+            );
 
             self.update_fov();
 
@@ -85,6 +88,11 @@ impl Game {
         let fov_radius = self.player.fov_radius;
         self.map
             .update_fov(self.player_x, self.player_y, fov_radius);
+
+        if self.player.is_dead() {
+            self.log_damage_message("Game over!".to_string());
+            self.log_info_message("You died.".to_string());
+        }
     }
 
     pub fn get_map(&self) -> &Vec<Vec<Tile>> {
@@ -93,6 +101,10 @@ impl Game {
 
     pub fn get_player(&self) -> &Player {
         &self.player
+    }
+
+    pub fn is_game_over(&self) -> bool {
+        self.player.is_dead()
     }
 
     pub fn log_message(&mut self, message: String, message_type: MessageType) {
@@ -141,19 +153,25 @@ impl Game {
 
             if self.map.is_interactable(new_x, new_y) {
                 self.map.interact_tile(new_x, new_y);
-                self.update_fov(); // upddate FOV after interacting to reveal hidden tiles
+                self.turns += 1; // each interaction counts as a turn
 
-                if let Tile::Door { open, .. } = self.map.get_tile(new_x, new_y) {
-                    if open {
+                match self.map.get_tile(new_x, new_y) {
+                    Tile::Door { open: false, .. } => {
                         self.log_info_message("You close the door".to_string());
-                    } else {
+                    }
+                    Tile::Door { open: true, .. } => {
                         self.log_info_message("You open the door".to_string());
                     }
-
-                    // hurt the player for now
-                    self.player.take_damage(1);
-                    self.log_damage_message("You take 1 damage from the door".to_string());
+                    Tile::Secret { .. } => {
+                        self.player.take_damage(1);
+                        self.log_damage_message(
+                            "You take 1 damage from revealing the secret".to_string(),
+                        );
+                    }
+                    _ => {}
                 }
+
+                self.update_fov(); // upddate FOV after interacting
 
                 return;
             }

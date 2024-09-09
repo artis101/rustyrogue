@@ -67,7 +67,7 @@ impl Map {
     pub fn find_player(&self) -> Option<(usize, usize)> {
         for (y, row) in self.tiles.iter().enumerate() {
             for (x, &tile) in row.iter().enumerate() {
-                if tile == Tile::Player {
+                if let Tile::Player { .. } = tile {
                     return Some((x, y));
                 }
             }
@@ -76,7 +76,11 @@ impl Map {
     }
 
     pub fn is_interactable(&self, x: usize, y: usize) -> bool {
-        matches!(self.tiles[y][x], Tile::Door { .. })
+        matches!(
+            self.tiles[y][x],
+            Tile::Door { .. } | Tile::Secret { visible: true } // you can interact with visible
+                                                               // things for now
+        )
     }
 
     pub fn interact_tile(&mut self, x: usize, y: usize) {

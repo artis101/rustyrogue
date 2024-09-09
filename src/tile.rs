@@ -10,7 +10,7 @@ pub enum Tile {
     Wall { visible: bool },
     Floor { visible: bool },
     // (you)
-    Player,
+    Player { is_dead: bool },
     // interactable tiles
     Door { visible: bool, open: bool },
     Secret { visible: bool }, // secrets reveal themselves when you interact
@@ -30,7 +30,7 @@ impl Tile {
             Tile::Wall { .. } => '#',
             Tile::Floor { .. } | Tile::SecretFloor { visible: false } => '·',
             Tile::SecretFloor { visible: true } => '_',
-            Tile::Player => '@',
+            Tile::Player { .. } => '@',
             Tile::Door { open: true, .. } => '+',
             Tile::Door { open: false, .. } => '/',
             Tile::Secret { .. } => '?',
@@ -54,7 +54,13 @@ impl Tile {
                     RatatuiColor::DarkGray
                 }
             }
-            Tile::Player => RatatuiColor::Cyan,
+            Tile::Player { is_dead } => {
+                if *is_dead {
+                    RatatuiColor::Red
+                } else {
+                    RatatuiColor::Yellow
+                }
+            }
             Tile::Door { visible: true, .. } => RatatuiColor::LightYellow,
             Tile::Door { visible: false, .. } => RatatuiColor::Yellow,
             Tile::Secret { visible: false } => RatatuiColor::Yellow,
@@ -67,7 +73,7 @@ impl Tile {
         match self {
             Tile::Wall { .. } => RatatuiColor::Gray,
             Tile::Floor { .. }
-            | Tile::Player
+            | Tile::Player { .. }
             | Tile::Archway { .. }
             | Tile::Door { .. }
             | Tile::Secret { .. }
@@ -85,7 +91,7 @@ impl Tile {
             Tile::Stairs { up: true, .. } => SDLColor::RGB(150, 150, 150),
             Tile::Wall { .. } | Tile::SecretFloor { .. } => SDLColor::RGB(255, 255, 255),
             Tile::Floor { .. } => SDLColor::RGB(50, 50, 50),
-            Tile::Player => SDLColor::RGB(255, 255, 0),
+            Tile::Player { .. } => SDLColor::RGB(255, 255, 0),
             Tile::Door { open: true, .. } => SDLColor::RGB(150, 75, 0),
             Tile::Door { open: false, .. } => SDLColor::RGB(150, 75, 0),
             Tile::Pit { .. } => SDLColor::RGB(50, 50, 50),
@@ -116,7 +122,7 @@ impl Tile {
             },
             '#' => Tile::Wall { visible: false },
             '.' => Tile::Floor { visible: false },
-            '@' => Tile::Player,
+            '@' => Tile::Player { is_dead: false },
             '+' => Tile::Door {
                 open: true,
                 visible: false,
