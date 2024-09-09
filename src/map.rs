@@ -21,7 +21,7 @@ impl Map {
     }
 
     pub fn width(&self) -> usize {
-        self.tiles.get(0).map(|row| row.len()).unwrap_or(0)
+        self.tiles.first().map(|row| row.len()).unwrap_or(0)
     }
 
     pub fn height(&self) -> usize {
@@ -62,7 +62,14 @@ impl Map {
         }
         None
     }
+
+    pub fn is_interactable(&self, x: usize, y: usize) -> bool {
+        matches!(self.tiles[y][x], Tile::Door { .. })
+    }
+
+    pub fn interact_tile(&mut self, x: usize, y: usize) {
+        if let Tile::Door { open } = self.tiles[y][x] {
+            self.tiles[y][x] = Tile::Door { open: !open };
+        }
+    }
 }
-
-
-

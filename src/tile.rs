@@ -2,19 +2,13 @@ use ratatui::style::Color as RatatuiColor;
 use sdl2::pixels::Color as SDLColor;
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum DoorState {
-    Open,
-    Closed,
-}
-
-#[derive(Clone, Copy, PartialEq)]
 pub enum Tile {
     Archway { locked: bool },
     Stairs { up: bool },
     Wall,
     Floor,
     Player,
-    Door { state: DoorState },
+    Door { open: bool },
     Empty,
 }
 
@@ -27,12 +21,8 @@ impl Tile {
             Tile::Wall => '#',
             Tile::Floor => '.',
             Tile::Player => '@',
-            Tile::Door {
-                state: DoorState::Open,
-            } => '+',
-            Tile::Door {
-                state: DoorState::Closed,
-            } => '/',
+            Tile::Door { open: true } => '+',
+            Tile::Door { open: false } => '/',
             Tile::Empty => ' ',
         }
     }
@@ -45,12 +35,8 @@ impl Tile {
             Tile::Wall => RatatuiColor::Gray,
             Tile::Floor => RatatuiColor::DarkGray,
             Tile::Player => RatatuiColor::Cyan,
-            Tile::Door {
-                state: DoorState::Open,
-            } => RatatuiColor::LightYellow,
-            Tile::Door {
-                state: DoorState::Closed,
-            } => RatatuiColor::LightYellow,
+            Tile::Door { open: true } => RatatuiColor::LightYellow,
+            Tile::Door { open: false } => RatatuiColor::LightYellow,
             Tile::Empty => RatatuiColor::Black,
         }
     }
@@ -63,12 +49,8 @@ impl Tile {
             Tile::Wall => RatatuiColor::White,
             Tile::Floor => RatatuiColor::Black,
             Tile::Player => RatatuiColor::Black,
-            Tile::Door {
-                state: DoorState::Open,
-            } => RatatuiColor::Black,
-            Tile::Door {
-                state: DoorState::Closed,
-            } => RatatuiColor::Black,
+            Tile::Door { open: true } => RatatuiColor::Black,
+            Tile::Door { open: false } => RatatuiColor::Black,
             Tile::Empty => RatatuiColor::Black,
         }
     }
@@ -81,12 +63,8 @@ impl Tile {
             Tile::Wall => SDLColor::RGB(255, 255, 255),
             Tile::Floor => SDLColor::RGB(50, 50, 50),
             Tile::Player => SDLColor::RGB(255, 255, 0),
-            Tile::Door {
-                state: DoorState::Open,
-            } => SDLColor::RGB(150, 75, 0),
-            Tile::Door {
-                state: DoorState::Closed,
-            } => SDLColor::RGB(150, 75, 0),
+            Tile::Door { open: true } => SDLColor::RGB(150, 75, 0),
+            Tile::Door { open: false } => SDLColor::RGB(150, 75, 0),
             Tile::Empty => SDLColor::RGB(0, 0, 0),
         }
     }
@@ -95,7 +73,7 @@ impl Tile {
         match self {
             Tile::Wall => false,
             Tile::Archway { locked } => !locked,
-            Tile::Door { state } => *state == DoorState::Open,
+            Tile::Door { open } => *open,
             _ => true,
         }
     }
@@ -108,12 +86,8 @@ impl Tile {
             '#' => Tile::Wall,
             '.' => Tile::Floor,
             '@' => Tile::Player,
-            '+' => Tile::Door {
-                state: DoorState::Open,
-            },
-            '/' => Tile::Door {
-                state: DoorState::Closed,
-            },
+            '+' => Tile::Door { open: true },
+            '/' => Tile::Door { open: false },
             _ => Tile::Empty,
         }
     }

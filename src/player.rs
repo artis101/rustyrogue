@@ -1,6 +1,3 @@
-use ratatui::prelude::Stylize;
-use ratatui::text::Span;
-
 pub struct Player {
     pub level: u32,
     pub exp: u32,
@@ -44,16 +41,5 @@ impl Player {
 
     pub fn take_damage(&mut self, amount: u32) {
         self.current_hp = self.current_hp.saturating_sub(amount);
-    }
-
-    pub fn colored_hp(&self) -> Span<'static> {
-        let hp_ratio = self.current_hp as f32 / self.max_hp as f32;
-
-        match hp_ratio {
-            r if r >= 0.75 => self.current_hp.to_string().green(),
-            r if r >= 0.5 => self.current_hp.to_string().yellow(),
-            r if r >= 0.25 => self.current_hp.to_string().red(),
-            _ => self.current_hp.to_string().gray(),
-        }
     }
 }

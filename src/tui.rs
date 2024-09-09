@@ -43,7 +43,7 @@ impl Tui {
                     .constraints(
                         [
                             Constraint::Min(0),    // For Map and Info
-                            Constraint::Length(6), // For Log
+                            Constraint::Length(7), // For Log
                         ]
                         .as_ref(),
                     )
@@ -74,6 +74,7 @@ impl Tui {
                             KeyCode::Right | KeyCode::Char('l') => game.move_player(1, 0),
                             KeyCode::Up | KeyCode::Char('k') => game.move_player(0, -1),
                             KeyCode::Down | KeyCode::Char('j') => game.move_player(0, 1),
+                            KeyCode::Char(' ') | KeyCode::Char('e') => game.interact(),
                             _ => {}
                         }
                     }
@@ -113,11 +114,20 @@ impl Tui {
     }
 
     fn prepare_game_log_widget(game: &Game) -> Paragraph<'static> {
-        let door_message = game
-            .get_door_message()
-            .unwrap_or_else(|| "No door nearby".to_string());
+        let log_messages: Vec<_> = game
+            .get_log_messages()
+            .iter()
+            .map(|message| {
+                let color = match message.message_type {
+                    crate::game::MessageType::Info => Color::Gray,
+                    crate::game::MessageType::Damage => Color::Red,
+                };
+                let style = Style::default().fg(color);
+                Line::from(vec![Span::styled(message.message.clone(), style)])
+            })
+            .collect();
 
-        Paragraph::new(door_message)
+        Paragraph::new(log_messages)
             .block(
                 Block::default()
                     .borders(Borders::ALL)

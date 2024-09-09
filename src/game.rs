@@ -1,15 +1,27 @@
 use crate::map::Map;
 use crate::player::Player;
 use crate::tile::Tile;
+use std::cmp::{max, min};
 use std::io;
+
+pub enum MessageType {
+    Info,
+    Damage,
+}
+
+pub struct GameMessage {
+    pub message: String,
+    pub message_type: MessageType,
+}
 
 pub struct Game {
     map: Map,
+    player: Player,
     player_x: usize,
     player_y: usize,
     previous_tile: Tile,
-    player: Player,
     turns: u32,
+    log_messages: Vec<GameMessage>, // Game log is a FIFO queue of 5 messages
 }
 
 impl Game {
@@ -18,11 +30,12 @@ impl Game {
         let (player_x, player_y) = map.find_player().unwrap_or((1, 1));
         Ok(Game {
             map,
+            player: Player::new(),
             player_x,
             player_y,
             previous_tile: Tile::Floor,
-            player: Player::new(),
             turns: 0,
+            log_messages: Vec::with_capacity(5),
         })
     }
 
@@ -62,24 +75,73 @@ impl Game {
         self.map.get_tiles()
     }
 
-    pub fn get_door_message(&self) -> Option<String> {
-        let directions = [(0, -1), (1, 0), (0, 1), (-1, 0)];
-        for (dx, dy) in directions.iter() {
-            let x = (self.player_x as i32 + dx)
-                .max(0)
-                .min((self.map.width() - 1) as i32) as usize;
-            let y = (self.player_y as i32 + dy)
-                .max(0)
-                .min((self.map.height() - 1) as i32) as usize;
-
-            if matches!(self.map.get_tile(x, y), Tile::Door { .. }) {
-                return Some(format!("Door found at ({}, {})", x, y));
-            }
-        }
-        None
-    }
-
     pub fn get_player(&self) -> &Player {
         &self.player
+    }
+
+    pub fn log_message(&mut self, message: String, message_type: MessageType) {
+        if self.log_messages.len() == 5 {
+            self.log_messages.remove(0);
+        }
+        self.log_messages.push(GameMessage {
+            message,
+            message_type,
+        });
+    }
+
+    pub fn log_info_message(&mut self, message: String) {
+        self.log_message(message, MessageType::Info);
+    }
+
+    pub fn log_damage_message(&mut self, message: String) {
+        self.log_message(message, MessageType::Damage);
+    }
+
+    pub fn get_log_messages(&self) -> &Vec<GameMessage> {
+        &self.log_messages
+    }
+
+    pub fn interact(&mut self) {
+        let directions = [
+            (-1, -1),
+            (0, -1),
+            (1, -1),
+            (-1, 0),
+            (1, 0),
+            (-1, 1),
+            (0, 1),
+            (1, 1),
+        ];
+
+        for (dx, dy) in directions.iter() {
+            let new_x = max(
+                0,
+                min(self.map.width() as i32 - 1, self.player_x as i32 + dx),
+            ) as usize;
+            let new_y = max(
+                0,
+                min(self.map.height() as i32 - 1, self.player_y as i32 + dy),
+            ) as usize;
+
+            if self.map.is_interactable(new_x, new_y) {
+                self.map.interact_tile(new_x, new_y);
+
+                if let Tile::Door { open } = self.map.get_tile(new_x, new_y) {
+                    if open {
+                        self.log_info_message("You close the door".to_string());
+                    } else {
+                        self.log_info_message("You open the door".to_string());
+                    }
+
+                    // hurt the player for now
+                    self.player.take_damage(1);
+                    self.log_damage_message("You take 1 damage from the door".to_string());
+                }
+
+                return;
+            }
+        }
+
+        self.log_info_message("No interactable tiles found nearby.".to_string());
     }
 }

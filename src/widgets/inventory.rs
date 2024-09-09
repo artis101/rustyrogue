@@ -1,9 +1,8 @@
 use crate::Game;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    prelude::Stylize,
     style::{Color, Style},
-    widgets::{Block, Gauge, Paragraph, Widget},
+    widgets::{Gauge, Paragraph, Widget},
 };
 
 pub struct InventoryWidget<'a> {
