@@ -1,0 +1,17 @@
+{
+  "secrets": [
+    {
+      "position": 0,
+      "resolve_to": "^",
+      "metadata": {
+        "damage": 5
+      }
+    }
+  ],
+  "doors": [
+    {
+      "position": 0,
+      "resolve_to": "V"
+    }
+  ]
+}

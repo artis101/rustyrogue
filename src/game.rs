@@ -26,7 +26,9 @@ pub struct Game {
 
 impl Game {
     pub fn new(map_file: &str) -> io::Result<Self> {
-        let map = Map::load(map_file)?;
+        let full_map_file = format!("maps/{}.txt", map_file);
+        let map_hint_file = format!("maps/{}_hint.txt", map_file);
+        let map = Map::load(&full_map_file, &map_hint_file)?;
         let (player_x, player_y) = map.find_player().unwrap_or((1, 1));
         Ok(Game {
             map,

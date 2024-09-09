@@ -18,7 +18,7 @@ fn main() -> Result<(), io::Error> {
     let use_sdl = args.contains(&"--sdl".to_string());
 
     // Create game instance
-    let mut game = Game::new("example_map.txt")?;
+    let mut game = Game::new("tutorial")?;
 
     if use_sdl {
         // Run the game with SDL renderer

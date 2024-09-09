@@ -7,7 +7,7 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn load(filename: &str) -> io::Result<Self> {
+    pub fn load(filename: &str, hint_filename: &str) -> io::Result<Self> {
         let file = File::open(filename)?;
         let reader = BufReader::new(file);
         let mut tiles = Vec::new();
@@ -15,6 +15,13 @@ impl Map {
         for line in reader.lines() {
             let line = line?;
             tiles.push(line.chars().map(Tile::from_char).collect());
+        }
+
+        let hint_file = File::open(hint_filename);
+        if let Ok(hint_file) = hint_file {
+            // read json file
+            let _reader = BufReader::new(hint_file);
+            // resolve secrets in map
         }
 
         Ok(Map { tiles })
