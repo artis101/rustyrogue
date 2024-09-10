@@ -4,6 +4,8 @@ Rustyrogue is a roguelike game written in Rust. It is a work in progress.
 The goal is to make a simple roguelike game that is easy to understand and modify.
 Additionally this game is my learning project for Rust and game development.
 
+[Screenshot from early version](https://github.com/artis101/rustyrogue/blob/main/assets/screenshot.png?raw=true)
+
 ## Features
 
 This is a non-exhaustive list of features that I plan to implement in this game.
