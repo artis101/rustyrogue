@@ -176,6 +176,25 @@ impl Map {
             Tile::Secret { .. } => Tile::Secret { visible },
             Tile::SecretFloor { .. } => Tile::SecretFloor { visible },
             Tile::Door { open, .. } => Tile::Door { open, visible },
+            Tile::Obelisk {
+                curse,
+                proximity,
+                damage_hp,
+                reduce_max_hp,
+                reduce_strength,
+                reduce_fov_radius,
+                reduce_defense,
+                ..
+            } => Tile::Obelisk {
+                visible,
+                curse,
+                proximity,
+                damage_hp,
+                reduce_max_hp,
+                reduce_strength,
+                reduce_fov_radius,
+                reduce_defense,
+            },
             // Update other tile types as needed
             _ => tile,
         };

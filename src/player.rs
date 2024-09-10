@@ -1,6 +1,7 @@
 pub struct Player {
     pub level: u32,
     pub exp: u32,
+    // stats that can be changed by leveling up or through curses
     pub max_hp: u32,
     pub current_hp: u32,
     pub strength: u32,

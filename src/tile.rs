@@ -4,19 +4,50 @@ use sdl2::pixels::Color as SDLColor;
 #[derive(Clone, Copy, PartialEq)]
 pub enum Tile {
     // archway is the plot device that starts the game
-    Archway { locked: bool },
+    Archway {
+        locked: bool,
+    },
     // normal map tiles
-    Stairs { visible: bool, up: bool },
-    Wall { visible: bool },
-    Floor { visible: bool },
+    Stairs {
+        visible: bool,
+        up: bool,
+    },
+    Wall {
+        visible: bool,
+    },
+    Floor {
+        visible: bool,
+    },
     // (you)
-    Player { is_dead: bool },
+    Player {
+        is_dead: bool,
+    },
     // interactable tiles
-    Door { visible: bool, open: bool },
-    Secret { visible: bool }, // secrets reveal themselves when you interact
-    SecretFloor { visible: bool }, // secret tiles reveal themeselves when you step on them
+    Door {
+        visible: bool,
+        open: bool,
+    },
+    Secret {
+        visible: bool,
+    }, // secrets reveal themselves when you interact
+    SecretFloor {
+        visible: bool,
+    }, // secret tiles reveal themeselves when you step on them
+    // hurtful tiles
+    Obelisk {
+        visible: bool,
+        curse: bool,
+        proximity: bool,
+        damage_hp: u32,
+        reduce_max_hp: u32,
+        reduce_strength: u32,
+        reduce_defense: u32,
+        reduce_fov_radius: u32,
+    }, // obelisks curse players and should be avoided
     // deadly tiles
-    Pit { visible: bool }, // falling into a pit kills the player
+    Pit {
+        visible: bool,
+    }, // falling into a pit kills the player
     // empty
     Empty,
 }
@@ -28,13 +59,19 @@ impl Tile {
             Tile::Stairs { up: false, .. } => '>',
             Tile::Stairs { up: true, .. } => '<',
             Tile::Wall { .. } => '#',
-            Tile::Floor { .. } | Tile::SecretFloor { visible: false } => '·',
             Tile::SecretFloor { visible: true } => '_',
             Tile::Player { .. } => '@',
             Tile::Door { open: true, .. } => '+',
             Tile::Door { open: false, .. } => '/',
-            Tile::Secret { .. } => '?',
-            Tile::Pit { .. } => 'V',
+            Tile::Secret { visible: true } => '?',
+            Tile::Pit { visible: true } => 'V',
+            Tile::Obelisk { visible: true, .. } => '|',
+            // FOV tiles + enemies
+            Tile::Floor { .. }
+            | Tile::SecretFloor { visible: false }
+            | Tile::Secret { visible: false }
+            | Tile::Pit { visible: false }
+            | Tile::Obelisk { visible: false, .. } => '·',
             Tile::Empty => ' ',
         }
     }
@@ -61,11 +98,12 @@ impl Tile {
                     RatatuiColor::Yellow
                 }
             }
-            Tile::Door { visible: true, .. } => RatatuiColor::LightYellow,
-            Tile::Door { visible: false, .. } => RatatuiColor::Yellow,
-            Tile::Secret { visible: false } => RatatuiColor::Yellow,
+            Tile::Obelisk { visible: false, .. } => RatatuiColor::DarkGray,
+            Tile::Secret { visible: false, .. } => RatatuiColor::DarkGray,
+            Tile::Door { visible: true, .. } => RatatuiColor::Yellow,
             Tile::Secret { visible: true } => RatatuiColor::LightYellow,
-            Tile::Empty => RatatuiColor::Reset,
+            Tile::Obelisk { visible: true, .. } => RatatuiColor::Magenta,
+            _ => RatatuiColor::Reset,
         }
     }
 
@@ -78,6 +116,7 @@ impl Tile {
             | Tile::Door { .. }
             | Tile::Secret { .. }
             | Tile::SecretFloor { .. }
+            | Tile::Obelisk { .. }
             | Tile::Pit { visible: false } => RatatuiColor::Black,
             Tile::Pit { visible: true } => RatatuiColor::DarkGray,
             _ => RatatuiColor::Reset,
@@ -96,13 +135,14 @@ impl Tile {
             Tile::Door { open: false, .. } => SDLColor::RGB(150, 75, 0),
             Tile::Pit { .. } => SDLColor::RGB(50, 50, 50),
             Tile::Secret { .. } => SDLColor::RGB(255, 255, 0),
+            Tile::Obelisk { .. } => SDLColor::RGB(255, 0, 255),
             Tile::Empty => SDLColor::RGB(0, 0, 0),
         }
     }
 
     pub fn is_walkable(&self) -> bool {
         match self {
-            Tile::Wall { .. } | Tile::Secret { .. } => false,
+            Tile::Wall { .. } | Tile::Secret { .. } | Tile::Obelisk { .. } => false,
             Tile::Archway { locked } => !locked,
             Tile::Door { open, .. } => *open,
             _ => true,
@@ -134,6 +174,16 @@ impl Tile {
             'V' => Tile::Pit { visible: false },
             '?' => Tile::Secret { visible: false },
             '_' => Tile::SecretFloor { visible: false },
+            '|' => Tile::Obelisk {
+                visible: false,
+                proximity: true,
+                curse: false,
+                damage_hp: 0,
+                reduce_max_hp: 0,
+                reduce_strength: 0,
+                reduce_defense: 0,
+                reduce_fov_radius: 4,
+            },
             _ => Tile::Empty,
         }
     }

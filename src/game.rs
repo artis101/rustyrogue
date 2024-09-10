@@ -24,6 +24,17 @@ pub struct Game {
     log_messages: Vec<GameMessage>, // Game log is a FIFO queue of 5 messages
 }
 
+const DIRECTIONS: [(i32, i32); 8] = [
+    (-1, -1),
+    (0, -1),
+    (1, -1),
+    (-1, 0),
+    (1, 0),
+    (-1, 1),
+    (0, 1),
+    (1, 1),
+];
+
 impl Game {
     pub fn new(map_file: &str) -> io::Result<Self> {
         let full_map_file = format!("maps/{}.txt", map_file);
@@ -48,24 +59,24 @@ impl Game {
     }
 
     pub fn move_player(&mut self, dx: i32, dy: i32) {
-        let new_x = (self.player_x as i32 + dx)
+        let search_x = (self.player_x as i32 + dx)
             .max(0)
             .min((self.map.width() - 1) as i32) as usize;
-        let new_y = (self.player_y as i32 + dy)
+        let search_y = (self.player_y as i32 + dy)
             .max(0)
             .min((self.map.height() - 1) as i32) as usize;
 
-        if self.map.is_walkable(new_x, new_y) {
+        if self.map.is_walkable(search_x, search_y) {
             // Restore the previous tile
             self.map
                 .set_tile(self.player_x, self.player_y, self.previous_tile);
 
             // Store the new tile before moving onto it
-            self.previous_tile = self.map.get_tile(new_x, new_y);
+            self.previous_tile = self.map.get_tile(search_x, search_y);
 
             // Update player position
-            self.player_x = new_x;
-            self.player_y = new_y;
+            self.player_x = search_x;
+            self.player_y = search_y;
 
             // Place the player on the new tile
             self.map.set_tile(
@@ -130,32 +141,21 @@ impl Game {
     }
 
     pub fn interact(&mut self) {
-        let directions = [
-            (-1, -1),
-            (0, -1),
-            (1, -1),
-            (-1, 0),
-            (1, 0),
-            (-1, 1),
-            (0, 1),
-            (1, 1),
-        ];
-
-        for (dx, dy) in directions.iter() {
-            let new_x = max(
+        for (dx, dy) in DIRECTIONS.iter() {
+            let search_x = max(
                 0,
                 min(self.map.width() as i32 - 1, self.player_x as i32 + dx),
             ) as usize;
-            let new_y = max(
+            let search_y = max(
                 0,
                 min(self.map.height() as i32 - 1, self.player_y as i32 + dy),
             ) as usize;
 
-            if self.map.is_interactable(new_x, new_y) {
-                self.map.interact_tile(new_x, new_y);
+            if self.map.is_interactable(search_x, search_y) {
+                self.map.interact_tile(search_x, search_y);
                 self.turns += 1; // each interaction counts as a turn
 
-                match self.map.get_tile(new_x, new_y) {
+                match self.map.get_tile(search_x, search_y) {
                     Tile::Door { open: false, .. } => {
                         self.log_info_message("You close the door".to_string());
                     }
@@ -167,11 +167,25 @@ impl Game {
                         self.log_damage_message(
                             "You take 1 damage from revealing the secret".to_string(),
                         );
+                        self.map.set_tile(
+                            search_x,
+                            search_y,
+                            Tile::Obelisk {
+                                visible: true,
+                                curse: false,    // curses not implemented yet
+                                proximity: true, // reverse FOV
+                                damage_hp: 1,
+                                reduce_max_hp: 0,
+                                reduce_strength: 0,
+                                reduce_defense: 0,
+                                reduce_fov_radius: 4,
+                            },
+                        );
                     }
                     _ => {}
                 }
 
-                self.update_fov(); // upddate FOV after interacting
+                self.update_fov(); // update FOV after interacting
 
                 return;
             }
