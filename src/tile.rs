@@ -22,6 +22,7 @@ pub enum Tile {
     // (you)
     Player {
         is_dead: bool,
+        is_cursed: bool,
     },
     // interactable tiles
     Door {
@@ -38,12 +39,8 @@ pub enum Tile {
     Obelisk {
         visible: bool,
         curse: bool,
-        proximity: bool,
         fov: u32,
         damage_hp: u32,
-        reduce_max_hp: u32,
-        reduce_strength: u32,
-        reduce_defense: u32,
         reduce_fov_radius: u32,
     }, // obelisks curse players and should be avoided
     // deadly tiles
@@ -103,11 +100,13 @@ impl Tile {
                     RatatuiColor::DarkGray
                 }
             }
-            Tile::Player { is_dead } => {
+            Tile::Player { is_dead, is_cursed } => {
                 if *is_dead {
                     RatatuiColor::Red
+                } else if *is_cursed {
+                    RatatuiColor::Magenta
                 } else {
-                    RatatuiColor::Yellow
+                    RatatuiColor::Cyan
                 }
             }
             Tile::Obelisk { visible: false, .. } => RatatuiColor::DarkGray,
@@ -177,7 +176,10 @@ impl Tile {
                 visible: false,
                 cursed: false,
             },
-            '@' => Tile::Player { is_dead: false },
+            '@' => Tile::Player {
+                is_dead: false,
+                is_cursed: false,
+            },
             '+' => Tile::Door {
                 open: true,
                 visible: false,
@@ -191,14 +193,10 @@ impl Tile {
             '_' => Tile::SecretFloor { visible: false },
             '|' => Tile::Obelisk {
                 visible: false,
-                proximity: true,
-                fov: 4,
-                curse: false,
-                damage_hp: 0,
-                reduce_max_hp: 0,
-                reduce_strength: 0,
-                reduce_defense: 0,
-                reduce_fov_radius: 4,
+                fov: 6,
+                curse: true,
+                damage_hp: 1,
+                reduce_fov_radius: 2, // essentially halves the FOV
             },
             _ => Tile::Empty,
         }

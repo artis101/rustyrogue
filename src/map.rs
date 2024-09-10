@@ -168,28 +168,135 @@ impl Map {
             Tile::Door { open, .. } => Tile::Door { open, visible },
             Tile::Obelisk {
                 curse,
-                proximity,
                 fov,
                 damage_hp,
-                reduce_max_hp,
-                reduce_strength,
                 reduce_fov_radius,
-                reduce_defense,
                 ..
             } => Tile::Obelisk {
                 visible,
                 curse,
-                proximity,
                 fov,
                 damage_hp,
-                reduce_max_hp,
-                reduce_strength,
                 reduce_fov_radius,
-                reduce_defense,
             },
             // Update other tile types as needed
             _ => tile,
         };
         self.set_tile(x, y, new_tile);
+    }
+
+    fn clear_curse_from_all_tiles(&mut self) {
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                if let Tile::Floor {
+                    cursed: true,
+                    visible,
+                } = self.get_tile(x, y)
+                {
+                    self.set_tile(
+                        x,
+                        y,
+                        Tile::Floor {
+                            cursed: false,
+                            visible,
+                        },
+                    );
+                } else if let Tile::Player {
+                    is_cursed: true,
+                    is_dead,
+                } = self.get_tile(x, y)
+                {
+                    self.set_tile(
+                        x,
+                        y,
+                        Tile::Player {
+                            is_cursed: false,
+                            is_dead,
+                        },
+                    );
+                }
+            }
+        }
+    }
+
+    pub fn apply_obelisk_curses(&mut self) {
+        self.clear_curse_from_all_tiles();
+        let mut cursed_tiles = HashSet::new();
+
+        // First pass: identify all Obelisks and their curse areas
+        for y in 0..self.height() {
+            for x in 0..self.width() {
+                if let Tile::Obelisk {
+                    curse: true, fov, ..
+                } = self.get_tile(x, y)
+                {
+                    self.calculate_curse_area(x, y, fov, &mut cursed_tiles);
+                }
+            }
+        }
+
+        // Second pass: apply curses to the identified tiles
+        for (x, y) in cursed_tiles {
+            if let Tile::Floor { visible, .. } = self.get_tile(x, y) {
+                self.set_tile(
+                    x,
+                    y,
+                    Tile::Floor {
+                        visible,
+                        cursed: true,
+                    },
+                );
+            } else if let Tile::Player { is_dead, .. } = self.get_tile(x, y) {
+                self.set_tile(
+                    x,
+                    y,
+                    Tile::Player {
+                        is_dead,
+                        is_cursed: true,
+                    },
+                );
+            }
+        }
+    }
+
+    pub fn get_obelisk_cursing_tile(&self, pov_x: usize, pov_y: usize) -> Option<Tile> {
+        // get nearest obelisk with direct line of sight to the player
+        for (y, row) in self.tiles.iter().enumerate() {
+            for (x, tile) in row.iter().enumerate() {
+                if let Tile::Obelisk { curse: true, .. } = self.get_tile(x, y) {
+                    if self.has_line_of_sight(x, y, pov_x, pov_y) {
+                        return Some(*tile);
+                    }
+                }
+            }
+        }
+
+        // Return None if no cursing obelisk is found or the player is not on a cursed tile
+        None
+    }
+
+    fn calculate_curse_area(
+        &self,
+        center_x: usize,
+        center_y: usize,
+        radius: u32,
+        cursed_tiles: &mut HashSet<(usize, usize)>,
+    ) {
+        let radius = radius as i32;
+        for dy in -radius..=radius {
+            for dx in -radius..=radius {
+                if dx * dx + dy * dy <= radius * radius {
+                    let x = center_x as i32 + dx;
+                    let y = center_y as i32 + dy;
+
+                    if (0..self.width() as i32).contains(&x)
+                        && (0..self.height() as i32).contains(&y)
+                        && self.has_line_of_sight(x as usize, y as usize, center_x, center_y)
+                    {
+                        cursed_tiles.insert((x as usize, y as usize));
+                    }
+                }
+            }
+        }
     }
 }

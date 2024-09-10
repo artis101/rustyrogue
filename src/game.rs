@@ -56,7 +56,7 @@ impl Game {
         };
 
         // Perform initial FOV update
-        game.update_fov();
+        game.tick();
 
         Ok(game)
     }
@@ -69,6 +69,12 @@ impl Game {
             .max(0)
             .min((self.map.height() - 1) as i32) as usize;
 
+        self.walk_to_tile(search_x, search_y);
+
+        self.tick();
+    }
+
+    fn walk_to_tile(&mut self, search_x: usize, search_y: usize) {
         if self.map.is_walkable(search_x, search_y) {
             // Restore the previous tile
             self.map
@@ -85,28 +91,79 @@ impl Game {
             self.map.set_tile(
                 self.player_x,
                 self.player_y,
-                Tile::Player { is_dead: false },
+                Tile::Player {
+                    is_dead: false,
+                    is_cursed: false, // don't need to check for curses here
+                                      // curses are checked in update_fov
+                },
             );
+        }
+    }
 
-            self.update_fov();
+    fn tick(&mut self) {
+        self.turns += 1;
+        self.map.apply_obelisk_curses();
+        self.update_fov();
+        self.check_effects();
+    }
 
-            // Increment turn counter
-            self.turns += 1;
+    fn check_effects(&mut self) {
+        if self.is_player_cursed() {
+            self.apply_curse_effects();
+        } else {
+            self.player.gain_exp(1); // @TODO implement normal exp gain
+        }
+    }
 
-            // Simulate gaining experience (you can modify this logic later)
-            self.player.gain_exp(1);
+    fn apply_curse_effects(&mut self) {
+        let cursing_tile = self
+            .map
+            .get_obelisk_cursing_tile(self.player_x, self.player_y);
+        if let Some(Tile::Obelisk {
+            visible: true,
+            damage_hp,
+            ..
+        }) = cursing_tile
+        {
+            self.log_damage_message(format!(
+                "You take {} damage from the Obelisk curse",
+                damage_hp
+            ));
+            self.player.take_damage(damage_hp);
+        }
+    }
+
+    fn is_player_cursed(&self) -> bool {
+        matches!(
+            self.map.get_tile(self.player_x, self.player_y),
+            Tile::Player {
+                is_cursed: true,
+                ..
+            }
+        )
+    }
+
+    fn get_player_fov_radius(&self) -> u32 {
+        if self.is_player_cursed() {
+            if let Some(Tile::Obelisk {
+                reduce_fov_radius, ..
+            }) = self
+                .map
+                .get_obelisk_cursing_tile(self.player_x, self.player_y)
+            {
+                reduce_fov_radius
+            } else {
+                self.player.fov_radius
+            }
+        } else {
+            self.player.fov_radius
         }
     }
 
     fn update_fov(&mut self) {
-        let fov_radius = self.player.fov_radius;
+        let fov_radius = self.get_player_fov_radius();
         self.map
             .update_fov(self.player_x, self.player_y, fov_radius);
-
-        if self.player.is_dead() {
-            self.log_damage_message("Game over!".to_string());
-            self.log_info_message("You died.".to_string());
-        }
     }
 
     pub fn get_map(&self) -> &Vec<Vec<Tile>> {
@@ -156,41 +213,7 @@ impl Game {
 
             if self.map.is_interactable(search_x, search_y) {
                 self.map.interact_tile(search_x, search_y);
-                self.turns += 1; // each interaction counts as a turn
-
-                match self.map.get_tile(search_x, search_y) {
-                    Tile::Door { open: false, .. } => {
-                        self.log_info_message("You close the door".to_string());
-                    }
-                    Tile::Door { open: true, .. } => {
-                        self.log_info_message("You open the door".to_string());
-                    }
-                    Tile::Secret { .. } => {
-                        self.player.take_damage(1);
-                        self.log_damage_message(
-                            "You take 1 damage from revealing the secret".to_string(),
-                        );
-                        self.map.set_tile(
-                            search_x,
-                            search_y,
-                            Tile::Obelisk {
-                                visible: true,
-                                curse: false,    // curses not implemented yet
-                                proximity: true, // reverse FOV
-                                fov: 4,
-                                damage_hp: 1,
-                                reduce_max_hp: 0,
-                                reduce_strength: 0,
-                                reduce_defense: 0,
-                                reduce_fov_radius: 4,
-                            },
-                        );
-                    }
-                    _ => {}
-                }
-
-                self.update_fov(); // update FOV after interacting
-
+                self.tick();
                 return;
             }
         }

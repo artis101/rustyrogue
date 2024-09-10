@@ -15,7 +15,7 @@ impl Player {
             level: 1,
             exp: 0,
             max_hp: 20,
-            current_hp: 2,
+            current_hp: 20,
             strength: 5,
             defense: 2,
             fov_radius: 4,
