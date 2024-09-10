@@ -28,6 +28,16 @@ It also serves as a roadmap and a todo list for the project.
   - [ ] Using stairs
   - [ ] Using portals/arches
   - [ ] Boss fights/boss rooms
+- [ ] Different environment tiles
+  - [x] Deadly pits
+  - [-] Pressure plates/secret floor tiles
+  - [ ] Water tiles
+  - [ ] Fire tiles
+  - [x] Cursed tiles
+  - [ ] Spikes ^ or v
+  - [ ] Trap tiles
+  - [ ] Revealing tiles ?
+  - [x] Obelisks
 - [ ] Basic combat system
 - [ ] Basic AI for enemies
 - [ ] Basic inventory system
@@ -37,6 +47,12 @@ It also serves as a roadmap and a todo list for the project.
   - [ ] Template level generation
   - [ ] Dungeon generation
   - [ ] Infinite level generation with interconnecting rooms
+- [ ] Level navigation
+  - [ ] Exiting a level through the doors
+  - [ ] Going up and down stairs
+  - [ ] Going back to the previous level through the same entrance
+  - [ ] Game state/explored dungeon map
+  - [ ] Minimap
 - [ ] SDL2 renderer
   - [ ] Basic rendering
   - [ ] Load and render sprite from files
