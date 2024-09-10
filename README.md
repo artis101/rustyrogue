@@ -30,7 +30,7 @@ It also serves as a roadmap and a todo list for the project.
   - [ ] Boss fights/boss rooms
 - [ ] Different environment tiles
   - [x] Deadly pits
-  - [-] Pressure plates/secret floor tiles
+  - [ ] Pressure plates/secret floor tiles
   - [ ] Water tiles
   - [ ] Fire tiles
   - [x] Cursed tiles
