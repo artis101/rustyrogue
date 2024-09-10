@@ -17,6 +17,7 @@ pub enum Tile {
     },
     Floor {
         visible: bool,
+        cursed: bool,
     },
     // (you)
     Player {
@@ -38,6 +39,7 @@ pub enum Tile {
         visible: bool,
         curse: bool,
         proximity: bool,
+        fov: u32,
         damage_hp: u32,
         reduce_max_hp: u32,
         reduce_strength: u32,
@@ -82,11 +84,21 @@ impl Tile {
             // dark gray/gray when visible tiles
             Tile::Stairs { visible, .. }
             | Tile::Wall { visible }
-            | Tile::Floor { visible }
             | Tile::Pit { visible }
             | Tile::SecretFloor { visible } => {
                 if *visible {
                     RatatuiColor::White
+                } else {
+                    RatatuiColor::DarkGray
+                }
+            }
+            Tile::Floor { visible, cursed } => {
+                if *visible {
+                    if *cursed {
+                        RatatuiColor::Magenta
+                    } else {
+                        RatatuiColor::White
+                    }
                 } else {
                     RatatuiColor::DarkGray
                 }
@@ -161,7 +173,10 @@ impl Tile {
                 visible: false,
             },
             '#' => Tile::Wall { visible: false },
-            '.' => Tile::Floor { visible: false },
+            '.' => Tile::Floor {
+                visible: false,
+                cursed: false,
+            },
             '@' => Tile::Player { is_dead: false },
             '+' => Tile::Door {
                 open: true,
@@ -177,6 +192,7 @@ impl Tile {
             '|' => Tile::Obelisk {
                 visible: false,
                 proximity: true,
+                fov: 4,
                 curse: false,
                 damage_hp: 0,
                 reduce_max_hp: 0,

@@ -105,7 +105,7 @@ impl Map {
         }
     }
 
-    pub fn update_fov(&mut self, player_x: usize, player_y: usize, fov_radius: u32) {
+    pub fn update_fov(&mut self, pov_x: usize, pov_y: usize, fov_radius: u32) {
         self.clear_visible_tiles();
         let radius_squared = (fov_radius * fov_radius) as i32;
 
@@ -113,13 +113,13 @@ impl Map {
             for dx in -(fov_radius as i32)..=(fov_radius as i32) {
                 let distance_squared = dx * dx + dy * dy;
                 if distance_squared <= radius_squared {
-                    let x = player_x as i32 + dx;
-                    let y = player_y as i32 + dy;
+                    let x = pov_x as i32 + dx;
+                    let y = pov_y as i32 + dy;
                     if x >= 0
                         && x < self.width() as i32
                         && y >= 0
                         && y < self.height() as i32
-                        && self.has_line_of_sight(player_x, player_y, x as usize, y as usize)
+                        && self.has_line_of_sight(pov_x, pov_y, x as usize, y as usize)
                     {
                         self.visible_tiles.insert((x as usize, y as usize));
                         self.update_tile_visibility(x as usize, y as usize, true);
@@ -171,7 +171,7 @@ impl Map {
         let tile = self.get_tile(x, y);
         let new_tile = match tile {
             Tile::Wall { .. } => Tile::Wall { visible },
-            Tile::Floor { .. } => Tile::Floor { visible },
+            Tile::Floor { cursed, .. } => Tile::Floor { cursed, visible },
             Tile::Pit { .. } => Tile::Pit { visible },
             Tile::Secret { .. } => Tile::Secret { visible },
             Tile::SecretFloor { .. } => Tile::SecretFloor { visible },
@@ -179,6 +179,7 @@ impl Map {
             Tile::Obelisk {
                 curse,
                 proximity,
+                fov,
                 damage_hp,
                 reduce_max_hp,
                 reduce_strength,
@@ -189,6 +190,7 @@ impl Map {
                 visible,
                 curse,
                 proximity,
+                fov,
                 damage_hp,
                 reduce_max_hp,
                 reduce_strength,

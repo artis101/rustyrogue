@@ -47,7 +47,10 @@ impl Game {
             player,
             player_x,
             player_y,
-            previous_tile: Tile::Floor { visible: false },
+            previous_tile: Tile::Floor {
+                visible: false,
+                cursed: false,
+            },
             turns: 0,
             log_messages: Vec::with_capacity(5),
         };
@@ -174,6 +177,7 @@ impl Game {
                                 visible: true,
                                 curse: false,    // curses not implemented yet
                                 proximity: true, // reverse FOV
+                                fov: 4,
                                 damage_hp: 1,
                                 reduce_max_hp: 0,
                                 reduce_strength: 0,
