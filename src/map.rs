@@ -92,15 +92,10 @@ impl Map {
         }
     }
 
-    pub fn clear_visible_tiles(&mut self) {
-        // Collect the coordinates into a separate Vec to avoid borrowing issues
-        let coords: Vec<(usize, usize)> = self.visible_tiles.iter().cloned().collect();
+    fn clear_visible_tiles(&mut self) {
+        let points_to_clear: Vec<(usize, usize)> = self.visible_tiles.drain().collect();
 
-        // Clear the visible_tiles set
-        self.visible_tiles.clear();
-
-        // Update tile visibility
-        for (x, y) in coords {
+        for (x, y) in points_to_clear {
             self.update_tile_visibility(x, y, false);
         }
     }
@@ -109,20 +104,19 @@ impl Map {
         self.clear_visible_tiles();
         let radius_squared = (fov_radius * fov_radius) as i32;
 
-        for dy in -(fov_radius as i32)..=(fov_radius as i32) {
-            for dx in -(fov_radius as i32)..=(fov_radius as i32) {
-                let distance_squared = dx * dx + dy * dy;
-                if distance_squared <= radius_squared {
+        for dy in -(fov_radius as i32)..=fov_radius as i32 {
+            for dx in -(fov_radius as i32)..=fov_radius as i32 {
+                if dx * dx + dy * dy <= radius_squared {
                     let x = pov_x as i32 + dx;
                     let y = pov_y as i32 + dy;
-                    if x >= 0
-                        && x < self.width() as i32
-                        && y >= 0
-                        && y < self.height() as i32
+
+                    if (0..self.width() as i32).contains(&x)
+                        && (0..self.height() as i32).contains(&y)
                         && self.has_line_of_sight(pov_x, pov_y, x as usize, y as usize)
                     {
-                        self.visible_tiles.insert((x as usize, y as usize));
-                        self.update_tile_visibility(x as usize, y as usize, true);
+                        let (x, y) = (x as usize, y as usize);
+                        self.visible_tiles.insert((x, y));
+                        self.update_tile_visibility(x, y, true);
                     }
                 }
             }
@@ -130,15 +124,10 @@ impl Map {
     }
 
     fn has_line_of_sight(&self, x0: usize, y0: usize, x1: usize, y1: usize) -> bool {
-        // Implement Bresenham's line algorithm
-        let mut x0 = x0 as i32;
-        let mut y0 = y0 as i32;
-        let x1 = x1 as i32;
-        let y1 = y1 as i32;
-        let dx = (x1 - x0).abs();
-        let dy = -(y1 - y0).abs();
-        let sx = if x0 < x1 { 1 } else { -1 };
-        let sy = if y0 < y1 { 1 } else { -1 };
+        let (mut x0, mut y0) = (x0 as i32, y0 as i32);
+        let (x1, y1) = (x1 as i32, y1 as i32);
+        let (dx, dy) = ((x1 - x0).abs(), -(y1 - y0).abs());
+        let (sx, sy) = (if x0 < x1 { 1 } else { -1 }, if y0 < y1 { 1 } else { -1 });
         let mut err = dx + dy;
 
         loop {
@@ -148,6 +137,7 @@ impl Map {
             if self.is_opaque(x0 as usize, y0 as usize) {
                 return false;
             }
+
             let e2 = 2 * err;
             if e2 >= dy {
                 err += dy;
