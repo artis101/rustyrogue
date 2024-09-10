@@ -70,8 +70,6 @@ impl Game {
             .min((self.map.height() - 1) as i32) as usize;
 
         self.walk_to_tile(search_x, search_y);
-
-        self.tick();
     }
 
     fn walk_to_tile(&mut self, search_x: usize, search_y: usize) {
@@ -82,6 +80,8 @@ impl Game {
 
             // Store the new tile before moving onto it
             self.previous_tile = self.map.get_tile(search_x, search_y);
+
+            let is_destination_deadly = self.map.is_deadly(search_x, search_y);
 
             // Update player position
             self.player_x = search_x;
@@ -94,9 +94,17 @@ impl Game {
                 Tile::Player {
                     is_dead: false,
                     is_cursed: false, // don't need to check for curses here
-                                      // curses are checked in update_fov
                 },
             );
+
+            if is_destination_deadly {
+                self.log_damage_message("You died!".to_string());
+                self.player.take_damage(self.player.current_hp);
+            }
+
+            self.tick();
+        } else {
+            self.log_info_message("You can't walk there.".to_string());
         }
     }
 

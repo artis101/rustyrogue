@@ -64,6 +64,10 @@ impl Map {
         self.get_tile(x, y).is_walkable()
     }
 
+    pub fn is_deadly(&self, x: usize, y: usize) -> bool {
+        matches!(self.get_tile(x, y), Tile::Pit { .. })
+    }
+
     pub fn find_player(&self) -> Option<(usize, usize)> {
         for (y, row) in self.tiles.iter().enumerate() {
             for (x, &tile) in row.iter().enumerate() {
