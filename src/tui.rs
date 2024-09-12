@@ -110,11 +110,22 @@ impl Tui {
 
     fn prepare_map_widget(game: &Game) -> Paragraph<'static> {
         let map = game.get_map();
-        let map_string: Vec<Line> = map
+        let player_pos = game.get_player_position();
+        let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
+        let visible_width = term_width as usize - 45;
+        let visible_height = term_height as usize - 9;
+
+        let start_x = player_pos.0.saturating_sub(visible_width / 2);
+        let start_y = player_pos.1.saturating_sub(visible_height / 2);
+        let end_x = (start_x + visible_width).min(map[0].len());
+        let end_y = (start_y + visible_height).min(map.len());
+
+        let map_string: Vec<Line> = map[start_y..end_y]
             .iter()
             .map(|row| {
                 Line::from(
-                    row.iter()
+                    row[start_x..end_x]
+                        .iter()
                         .map(|&tile: &Tile| {
                             let style = Style::default().fg(tile.term_fg()).bg(tile.term_bg());
                             Span::styled(tile.symbol().to_string(), style)

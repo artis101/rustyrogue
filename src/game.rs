@@ -182,6 +182,10 @@ impl Game {
         &self.player
     }
 
+    pub fn get_player_position(&self) -> (usize, usize) {
+        (self.player_x, self.player_y)
+    }
+
     pub fn is_game_over(&self) -> bool {
         self.player.is_dead()
     }
