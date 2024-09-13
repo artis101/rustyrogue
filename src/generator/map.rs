@@ -2,13 +2,13 @@ use crate::generator::room::Room;
 use crate::map::types::{Coordinate, GameMapTiles, Point};
 use crate::tile::Tile;
 use rand::Rng;
-use std::cell::RefCell;
-use std::rc::Rc;
+use rayon::prelude::*;
+use std::sync::{Arc, RwLock};
 
 pub struct MapGenerator {
     width: Coordinate,
     height: Coordinate,
-    tiles: Rc<RefCell<GameMapTiles>>,
+    tiles: Arc<RwLock<GameMapTiles>>,
     rooms: Vec<Room>,
 }
 
@@ -17,39 +17,35 @@ impl MapGenerator {
         MapGenerator {
             width,
             height,
-            tiles: Rc::new(RefCell::new(vec![vec![Tile::Empty; width]; height])),
-            rooms: vec![],
+            tiles: Arc::new(RwLock::new(vec![vec![Tile::Empty; width]; height])),
+            rooms: Vec::new(),
         }
     }
 
     pub fn generate(&mut self, num_rooms: usize) -> &mut Self {
         self.fill_with_empty();
 
+        // Generate rooms synchronously
         let mut rng = rand::thread_rng();
-
         for _ in 0..num_rooms {
-            let mut attempts = 0;
-            while attempts < 100 {
+            for _ in 0..100 {
                 let x = rng.gen_range(0..self.width);
                 let y = rng.gen_range(0..self.height);
                 let width = rng.gen_range(10..35).min(self.width - x);
                 let height = rng.gen_range(5..15).min(self.height - y);
+                let location = Point::new(x, y);
 
-                if self.can_add_room(Point::new(x, y), width, height) {
-                    self.add_room(Point::new(x, y), width, height);
+                if self.can_add_room(location, width, height) {
+                    let room = Room::new(location, width, height, Arc::clone(&self.tiles));
+                    self.rooms.push(room);
                     break;
                 }
-                attempts += 1;
             }
         }
 
+        // Populate rooms in parallel
         self.populate_all_rooms();
         self
-    }
-
-    fn add_room(&mut self, location: Point, width: Coordinate, height: Coordinate) {
-        let room = Room::new(location, width, height, Rc::clone(&self.tiles));
-        self.rooms.push(room);
     }
 
     fn can_add_room(&self, location: Point, width: Coordinate, height: Coordinate) -> bool {
@@ -70,7 +66,7 @@ impl MapGenerator {
     }
 
     fn fill_with_empty(&self) {
-        let mut tiles = self.tiles.borrow_mut();
+        let mut tiles = self.tiles.write().unwrap();
         for y in 0..self.height {
             for x in 0..self.width {
                 tiles[y][x] = Tile::Empty;
@@ -79,9 +75,9 @@ impl MapGenerator {
     }
 
     fn populate_all_rooms(&self) {
-        for room in &self.rooms {
+        self.rooms.par_iter().for_each(|room| {
             room.populate();
-        }
+        });
     }
 
     pub fn print(&self, with_border: bool) {
@@ -89,10 +85,10 @@ impl MapGenerator {
         if with_border {
             println!("{}", "-".repeat(self.width));
         }
+        let tiles = self.tiles.read().unwrap();
         println!(
             "{}",
-            self.tiles
-                .borrow()
+            tiles
                 .iter()
                 .map(|row| {
                     let row_str: String = row.iter().map(|tile| tile.as_char()).collect();
@@ -110,3 +106,4 @@ impl MapGenerator {
         }
     }
 }
+

@@ -1,13 +1,12 @@
 use crate::map::types::{Coordinate, GameMapTiles, Point};
 use crate::tile::Tile;
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 pub struct Room {
     pub location: Point,
     pub width: Coordinate,
     pub height: Coordinate,
-    tiles: Rc<RefCell<GameMapTiles>>,
+    tiles: Arc<RwLock<GameMapTiles>>,
 }
 
 impl Room {
@@ -15,7 +14,7 @@ impl Room {
         location: Point,
         width: Coordinate,
         height: Coordinate,
-        tiles: Rc<RefCell<GameMapTiles>>,
+        tiles: Arc<RwLock<GameMapTiles>>,
     ) -> Self {
         Room {
             location,
@@ -31,10 +30,12 @@ impl Room {
     }
 
     pub fn fill_with_floor(&self) {
-        let mut tiles = self.tiles.borrow_mut();
+        let tiles = self.tiles.read().unwrap();
         let max_y = tiles.len();
         let max_x = tiles.first().map_or(0, |row| row.len());
+        drop(tiles); // Release the read lock
 
+        let mut tiles = self.tiles.write().unwrap();
         for y in self.location.y..self.location.y.saturating_add(self.height) {
             for x in self.location.x..self.location.x.saturating_add(self.width) {
                 if y < max_y && x < max_x {
@@ -48,10 +49,12 @@ impl Room {
     }
 
     pub fn surround_with_walls(&self) {
-        let mut tiles = self.tiles.borrow_mut();
+        let tiles = self.tiles.read().unwrap();
         let max_y = tiles.len();
         let max_x = tiles.first().map_or(0, |row| row.len());
+        drop(tiles); // Release the read lock
 
+        let mut tiles = self.tiles.write().unwrap();
         for y in self.location.y.saturating_sub(1)..=self.location.y.saturating_add(self.height) {
             for x in self.location.x.saturating_sub(1)..=self.location.x.saturating_add(self.width)
             {
@@ -74,21 +77,22 @@ impl Room {
         other_width: Coordinate,
         other_height: Coordinate,
     ) -> bool {
-        let buffer = 1; // Add a buffer zone around rooms
+        let buffer = 4; // Add a buffer zone around rooms
 
-        let self_left = self.location.x.saturating_sub(buffer);
-        let self_right = self.location.x + self.width + buffer;
-        let self_top = self.location.y.saturating_sub(buffer);
-        let self_bottom = self.location.y + self.height + buffer;
+        let self_left = self.location.x;
+        let self_right = self.location.x + self.width;
+        let self_top = self.location.y;
+        let self_bottom = self.location.y + self.height;
 
-        let other_left = other_location.x.saturating_sub(buffer);
-        let other_right = other_location.x + other_width + buffer;
-        let other_top = other_location.y.saturating_sub(buffer);
-        let other_bottom = other_location.y + other_height + buffer;
+        let other_left = other_location.x;
+        let other_right = other_location.x + other_width;
+        let other_top = other_location.y;
+        let other_bottom = other_location.y + other_height;
 
-        self_left < other_right
-            && self_right > other_left
-            && self_top < other_bottom
-            && self_bottom > other_top
+        // Check if the rectangles overlap, including the buffer
+        (self_left.saturating_sub(buffer) <= other_right)
+            && (self_right + buffer >= other_left)
+            && (self_top.saturating_sub(buffer) <= other_bottom)
+            && (self_bottom + buffer >= other_top)
     }
 }
