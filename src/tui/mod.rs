@@ -131,14 +131,14 @@ impl Tui {
     }
 
     fn prepare_map_widget(game: &Game, map_size: (usize, usize)) -> Paragraph<'static> {
-        let map = game.get_map();
+        let map: &Vec<Vec<Tile>> = game.get_map();
         let player_pos = game.get_player_position();
 
         let visible_width = map_size.0;
         let visible_height = map_size.1;
 
-        let start_x = player_pos.0.saturating_sub(visible_width / 2);
-        let start_y = player_pos.1.saturating_sub(visible_height / 2);
+        let start_x = player_pos.x.saturating_sub(visible_width / 2);
+        let start_y = player_pos.y.saturating_sub(visible_height / 2);
 
         let end_x = (start_x + visible_width).min(map[0].len());
         let end_y = (start_y + visible_height).min(map.len());

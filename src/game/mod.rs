@@ -1,4 +1,7 @@
-use crate::map::Map;
+use crate::map::{
+    types::{GameMapTiles, Point},
+    Map,
+};
 use crate::player::Player;
 use crate::tile::Tile;
 use std::cmp::{max, min};
@@ -17,8 +20,7 @@ pub struct GameMessage {
 pub struct Game {
     map: Map,
     player: Player,
-    player_x: usize,
-    player_y: usize,
+    player_position: Point,
     previous_tile: Tile,
     turns: u32,
     log_messages: Vec<GameMessage>, // Game log is a FIFO queue of 5 messages
@@ -41,12 +43,11 @@ impl Game {
         let map_hint_file = format!("maps/{}_hint.txt", map_file);
         let map = Map::load(&full_map_file, &map_hint_file)?;
         let player = Player::new();
-        let (player_x, player_y) = map.find_player().unwrap_or((1, 1));
+        let player_position = map.find_player().unwrap_or(Point::new(0, 0));
         let mut game = Game {
             map,
             player,
-            player_x,
-            player_y,
+            player_position,
             previous_tile: Tile::Floor {
                 visible: false,
                 cursed: false,
@@ -72,37 +73,36 @@ impl Game {
 
     // Public functions that get called from UI go here
     pub fn move_player(&mut self, dx: i32, dy: i32) {
-        let search_x = (self.player_x as i32 + dx)
+        let search_x = (self.player_position.x as i32 + dx)
             .max(0)
             .min((self.map.width() - 1) as i32) as usize;
-        let search_y = (self.player_y as i32 + dy)
+        let search_y = (self.player_position.y as i32 + dy)
             .max(0)
             .min((self.map.height() - 1) as i32) as usize;
 
-        self.walk_to_tile(search_x, search_y);
+        self.walk_to_tile(Point {
+            x: search_x,
+            y: search_y,
+        });
     }
 
     pub fn show_hint(&mut self) {}
 
-    fn walk_to_tile(&mut self, search_x: usize, search_y: usize) {
-        if self.map.is_walkable(search_x, search_y) {
+    fn walk_to_tile(&mut self, search_position: Point) {
+        if self.map.is_walkable(search_position) {
             // Restore the previous tile
-            self.map
-                .set_tile(self.player_x, self.player_y, self.previous_tile);
+            self.map.set_tile(self.player_position, self.previous_tile);
 
             // Store the new tile before moving onto it
-            self.previous_tile = self.map.get_tile(search_x, search_y);
+            self.previous_tile = self.map.get_tile(search_position);
 
-            let is_destination_deadly = self.map.is_deadly(search_x, search_y);
+            let is_destination_deadly = self.map.is_deadly(search_position);
 
             // Update player position
-            self.player_x = search_x;
-            self.player_y = search_y;
-
+            self.player_position = search_position;
             // Place the player on the new tile
             self.map.set_tile(
-                self.player_x,
-                self.player_y,
+                self.player_position,
                 Tile::Player {
                     is_dead: false,
                     is_cursed: false, // don't need to check for curses here
@@ -129,9 +129,7 @@ impl Game {
     }
 
     fn apply_curse_effects(&mut self) {
-        let cursing_tile = self
-            .map
-            .get_obelisk_cursing_tile(self.player_x, self.player_y);
+        let cursing_tile = self.map.get_obelisk_cursing_tile(self.player_position);
         if let Some(Tile::Obelisk {
             visible: true,
             damage_hp,
@@ -148,7 +146,7 @@ impl Game {
 
     fn is_player_cursed(&self) -> bool {
         matches!(
-            self.map.get_tile(self.player_x, self.player_y),
+            self.map.get_tile(self.player_position),
             Tile::Player {
                 is_cursed: true,
                 ..
@@ -160,9 +158,7 @@ impl Game {
         if self.is_player_cursed() {
             if let Some(Tile::Obelisk {
                 reduce_fov_radius, ..
-            }) = self
-                .map
-                .get_obelisk_cursing_tile(self.player_x, self.player_y)
+            }) = self.map.get_obelisk_cursing_tile(self.player_position)
             {
                 reduce_fov_radius
             } else {
@@ -175,11 +171,10 @@ impl Game {
 
     fn update_fov(&mut self) {
         let fov_radius = self.get_player_fov_radius();
-        self.map
-            .update_fov(self.player_x, self.player_y, fov_radius);
+        self.map.update_fov(self.player_position, fov_radius);
     }
 
-    pub fn get_map(&self) -> &Vec<Vec<Tile>> {
+    pub fn get_map(&self) -> &GameMapTiles {
         self.map.get_tiles()
     }
 
@@ -187,8 +182,8 @@ impl Game {
         &self.player
     }
 
-    pub fn get_player_position(&self) -> (usize, usize) {
-        (self.player_x, self.player_y)
+    pub fn get_player_position(&self) -> Point {
+        self.player_position
     }
 
     pub fn is_game_over(&self) -> bool {
@@ -221,15 +216,22 @@ impl Game {
         for (dx, dy) in DIRECTIONS.iter() {
             let search_x = max(
                 0,
-                min(self.map.width() as i32 - 1, self.player_x as i32 + dx),
+                min(
+                    self.map.width() as i32 - 1,
+                    self.player_position.x as i32 + dx,
+                ),
             ) as usize;
             let search_y = max(
                 0,
-                min(self.map.height() as i32 - 1, self.player_y as i32 + dy),
+                min(
+                    self.map.height() as i32 - 1,
+                    self.player_position.y as i32 + dy,
+                ),
             ) as usize;
+            let search_position = Point::new(search_x, search_y);
 
-            if self.map.is_interactable(search_x, search_y) {
-                self.map.interact_tile(search_x, search_y);
+            if self.map.is_interactable(search_position) {
+                self.map.interact_tile(search_position);
                 self.tick();
                 return;
             }
