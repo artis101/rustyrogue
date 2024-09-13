@@ -61,6 +61,16 @@ impl Game {
         Ok(game)
     }
 
+    // This function updates the game state by one turn
+    // everything that updates goes in here
+    fn tick(&mut self) {
+        self.turns += 1;
+        self.map.apply_obelisk_curses();
+        self.update_fov();
+        self.check_effects();
+    }
+
+    // Public functions that get called from UI go here
     pub fn move_player(&mut self, dx: i32, dy: i32) {
         let search_x = (self.player_x as i32 + dx)
             .max(0)
@@ -71,6 +81,8 @@ impl Game {
 
         self.walk_to_tile(search_x, search_y);
     }
+
+    pub fn show_hint(&mut self) {}
 
     fn walk_to_tile(&mut self, search_x: usize, search_y: usize) {
         if self.map.is_walkable(search_x, search_y) {
@@ -106,13 +118,6 @@ impl Game {
         } else {
             self.log_info_message("You can't walk there.".to_string());
         }
-    }
-
-    fn tick(&mut self) {
-        self.turns += 1;
-        self.map.apply_obelisk_curses();
-        self.update_fov();
-        self.check_effects();
     }
 
     fn check_effects(&mut self) {
@@ -208,7 +213,7 @@ impl Game {
         self.log_message(message, MessageType::Damage);
     }
 
-    pub fn get_log_messages(&self) -> &Vec<GameMessage> {
+    pub fn get_game_log_messages(&self) -> &Vec<GameMessage> {
         &self.log_messages
     }
 

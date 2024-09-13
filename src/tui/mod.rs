@@ -1,6 +1,8 @@
-use crate::game::Game;
+pub mod widgets;
+
+use crate::game::{Game, MessageType};
 use crate::tile::Tile;
-use crate::widgets::inventory::InventoryWidget;
+use crate::tui::widgets::InventoryWidget;
 use crossterm::{
     event::{self, KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -16,8 +18,21 @@ use ratatui::{
 };
 use std::io;
 
+const QUIT_KEY: KeyCode = KeyCode::Char('q');
+const LEFT_MOVEMENT_KEYS: [KeyCode; 3] = [KeyCode::Left, KeyCode::Char('h'), KeyCode::Char('a')];
+const DOWN_MOVEMENT_KEYS: [KeyCode; 3] = [KeyCode::Down, KeyCode::Char('j'), KeyCode::Char('s')];
+const UP_MOVEMENT_KEYS: [KeyCode; 3] = [KeyCode::Up, KeyCode::Char('k'), KeyCode::Char('w')];
+const RIGHT_MOVEMENT_KEYS: [KeyCode; 3] = [KeyCode::Right, KeyCode::Char('l'), KeyCode::Char('d')];
+const INTERACT_KEYS: [KeyCode; 2] = [KeyCode::Char(' '), KeyCode::Char('e')];
+const HINT_KEYS: [KeyCode; 2] = [KeyCode::Char('?'), KeyCode::Tab];
+
+// Declare constant for the game log height
+const GAME_LOG_HEIGHT: u16 = 7;
+const INVENTORY_WIDTH: u16 = 25;
+
 pub struct Tui {
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
+    map_area_size: (usize, usize),
 }
 
 impl Tui {
@@ -28,7 +43,10 @@ impl Tui {
         let backend = CrosstermBackend::new(stdout);
         let terminal = Terminal::new(backend)?;
 
-        Ok(Tui { terminal })
+        Ok(Tui {
+            terminal,
+            map_area_size: (9999, 9999), // default to something big to avoid flashing on first draw
+        })
     }
 
     pub fn run(&mut self, game: &mut Game) -> Result<(), io::Error> {
@@ -41,7 +59,7 @@ impl Tui {
                 loop {
                     if event::poll(std::time::Duration::from_millis(100))? {
                         if let event::Event::Key(key) = event::read()? {
-                            if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
+                            if key.kind == KeyEventKind::Press && key.code == QUIT_KEY {
                                 return Ok(());
                             }
                         }
@@ -51,13 +69,14 @@ impl Tui {
                 if let event::Event::Key(key) = event::read()? {
                     if key.kind == KeyEventKind::Press {
                         match key.code {
-                            KeyCode::Char('q') => return Ok(()),
-                            KeyCode::Left | KeyCode::Char('h') => game.move_player(-1, 0),
-                            KeyCode::Right | KeyCode::Char('l') => game.move_player(1, 0),
-                            KeyCode::Up | KeyCode::Char('k') => game.move_player(0, -1),
-                            KeyCode::Down | KeyCode::Char('j') => game.move_player(0, 1),
-                            KeyCode::Char(' ') | KeyCode::Char('e') => game.interact(),
-                            _ => {}
+                            code if code == QUIT_KEY => return Ok(()),
+                            code if LEFT_MOVEMENT_KEYS.contains(&code) => game.move_player(-1, 0),
+                            code if RIGHT_MOVEMENT_KEYS.contains(&code) => game.move_player(1, 0),
+                            code if UP_MOVEMENT_KEYS.contains(&code) => game.move_player(0, -1),
+                            code if DOWN_MOVEMENT_KEYS.contains(&code) => game.move_player(0, 1),
+                            code if INTERACT_KEYS.contains(&code) => game.interact(),
+                            code if HINT_KEYS.contains(&code) => game.show_hint(),
+                            _ => (),
                         }
                     }
                 }
@@ -66,7 +85,7 @@ impl Tui {
     }
 
     fn draw(&mut self, game: &Game) -> Result<(), io::Error> {
-        let map_widget = Self::prepare_map_widget(game);
+        let map_widget = Self::prepare_map_widget(game, self.map_area_size);
         let info_widget = Self::prepare_inventory_widget(game);
         let game_log_widget = Self::prepare_game_log_widget(game);
 
@@ -75,8 +94,8 @@ impl Tui {
                 .direction(Direction::Vertical)
                 .constraints(
                     [
-                        Constraint::Min(0),    // For Map and Info
-                        Constraint::Length(7), // For Log
+                        Constraint::Min(0),                  // For Map and Info
+                        Constraint::Length(GAME_LOG_HEIGHT), // For Log
                     ]
                     .as_ref(),
                 )
@@ -86,12 +105,15 @@ impl Tui {
                 .direction(Direction::Horizontal)
                 .constraints(
                     [
-                        Constraint::Percentage(70), // Map takes 70% of the width
-                        Constraint::Percentage(30), // Info takes 30% of the width
+                        Constraint::Min(0),               // Map is fluid and fills the container
+                        Constraint::Max(INVENTORY_WIDTH), // Info takes 30% of the width
                     ]
                     .as_ref(),
                 )
                 .split(main_chunks[0]);
+
+            let map_area = top_chunks[0];
+            self.map_area_size = (map_area.columns().count(), map_area.rows().count());
 
             f.render_widget(map_widget, top_chunks[0]);
             f.render_widget(info_widget, top_chunks[1]);
@@ -108,15 +130,16 @@ impl Tui {
         Ok(())
     }
 
-    fn prepare_map_widget(game: &Game) -> Paragraph<'static> {
+    fn prepare_map_widget(game: &Game, map_size: (usize, usize)) -> Paragraph<'static> {
         let map = game.get_map();
         let player_pos = game.get_player_position();
-        let (term_width, term_height) = crossterm::terminal::size().unwrap_or((80, 24));
-        let visible_width = term_width as usize - 45;
-        let visible_height = term_height as usize - 9;
+
+        let visible_width = map_size.0;
+        let visible_height = map_size.1;
 
         let start_x = player_pos.0.saturating_sub(visible_width / 2);
         let start_y = player_pos.1.saturating_sub(visible_height / 2);
+
         let end_x = (start_x + visible_width).min(map[0].len());
         let end_y = (start_y + visible_height).min(map.len());
 
@@ -149,13 +172,13 @@ impl Tui {
     }
 
     fn prepare_game_log_widget(game: &Game) -> Paragraph<'static> {
-        let log_messages: Vec<_> = game
-            .get_log_messages()
+        let log_messages: Vec<Line> = game
+            .get_game_log_messages()
             .iter()
             .map(|message| {
                 let color = match message.message_type {
-                    crate::game::MessageType::Info => Color::Gray,
-                    crate::game::MessageType::Damage => Color::Red,
+                    MessageType::Info => Color::Gray,
+                    MessageType::Damage => Color::Red,
                 };
                 let style = Style::default().fg(color);
                 Line::from(vec![Span::styled(message.message.clone(), style)])

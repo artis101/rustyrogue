@@ -18,7 +18,7 @@ impl Player {
             current_hp: 20,
             strength: 5,
             defense: 2,
-            fov_radius: 4,
+            fov_radius: 10, // 10 seems to be a good default and provide a cool effect
         }
     }
 

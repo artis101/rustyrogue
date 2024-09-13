@@ -42,6 +42,7 @@ impl Widget for InventoryWidget<'_> {
             player.strength, player.defense
         ))
         .alignment(ratatui::layout::Alignment::Center);
+
         player_info.render(chunks[1], buf);
 
         let hp = Paragraph::new("HP").alignment(ratatui::layout::Alignment::Center);

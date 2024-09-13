@@ -4,7 +4,6 @@ mod player;
 mod sdl;
 mod tile;
 mod tui;
-mod widgets;
 
 use game::Game;
 use sdl::SDL;

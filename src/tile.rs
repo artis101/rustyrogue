@@ -1,6 +1,13 @@
 use ratatui::style::Color as RatatuiColor;
 use sdl2::pixels::Color as SDLColor;
 
+const VISIBLE_WALL_COLOR: RatatuiColor = RatatuiColor::Indexed(250);
+const INVISIBLE_WALL_COLOR: RatatuiColor = RatatuiColor::Indexed(245);
+
+const VISIBLE_CURSED_FLOOR_COLOR: RatatuiColor = RatatuiColor::Magenta;
+const VISIBLE_FLOOR_COLOR: RatatuiColor = RatatuiColor::Indexed(255);
+const INVISIBLE_FLOOR_COLOR: RatatuiColor = RatatuiColor::Indexed(240);
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum Tile {
     // archway is the plot device that starts the game
@@ -54,7 +61,7 @@ pub enum Tile {
 impl Tile {
     pub fn symbol(&self) -> char {
         match self {
-            Tile::Archway { .. } => '∩',
+            Tile::Archway { .. } => '∩', // figure out use for this later
             Tile::Stairs { up: false, .. } => '>',
             Tile::Stairs { up: true, .. } => '<',
             Tile::Wall { .. } => '#',
@@ -84,20 +91,20 @@ impl Tile {
             | Tile::Pit { visible }
             | Tile::SecretFloor { visible } => {
                 if *visible {
-                    RatatuiColor::White
+                    VISIBLE_WALL_COLOR
                 } else {
-                    RatatuiColor::DarkGray
+                    INVISIBLE_WALL_COLOR
                 }
             }
             Tile::Floor { visible, cursed } => {
                 if *visible {
                     if *cursed {
-                        RatatuiColor::Magenta
+                        VISIBLE_CURSED_FLOOR_COLOR
                     } else {
-                        RatatuiColor::White
+                        VISIBLE_FLOOR_COLOR
                     }
                 } else {
-                    RatatuiColor::DarkGray
+                    INVISIBLE_FLOOR_COLOR
                 }
             }
             Tile::Player { is_dead, is_cursed } => {
@@ -109,8 +116,8 @@ impl Tile {
                     RatatuiColor::Cyan
                 }
             }
-            Tile::Obelisk { visible: false, .. } => RatatuiColor::DarkGray,
-            Tile::Secret { visible: false, .. } => RatatuiColor::DarkGray,
+            Tile::Obelisk { visible: false, .. } => INVISIBLE_FLOOR_COLOR,
+            Tile::Secret { visible: false, .. } => INVISIBLE_FLOOR_COLOR,
             Tile::Door { visible: true, .. } => RatatuiColor::Yellow,
             Tile::Secret { visible: true } => RatatuiColor::LightYellow,
             Tile::Obelisk { visible: true, .. } => RatatuiColor::Magenta,
@@ -128,8 +135,8 @@ impl Tile {
             | Tile::Secret { .. }
             | Tile::SecretFloor { .. }
             | Tile::Obelisk { .. }
-            | Tile::Pit { visible: false } => RatatuiColor::Black,
-            Tile::Pit { visible: true } => RatatuiColor::DarkGray,
+            | Tile::Pit { visible: false } => RatatuiColor::Reset,
+            Tile::Pit { visible: true } => RatatuiColor::Indexed(240),
             _ => RatatuiColor::Reset,
         }
     }
