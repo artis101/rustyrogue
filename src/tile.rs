@@ -59,7 +59,7 @@ pub enum Tile {
 }
 
 impl Tile {
-    pub fn symbol(&self) -> char {
+    pub fn as_char(&self) -> char {
         match self {
             Tile::Archway { .. } => '∩', // figure out use for this later
             Tile::Stairs { up: false, .. } => '>',

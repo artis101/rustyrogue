@@ -151,7 +151,7 @@ impl Tui {
                         .iter()
                         .map(|&tile: &Tile| {
                             let style = Style::default().fg(tile.term_fg()).bg(tile.term_bg());
-                            Span::styled(tile.symbol().to_string(), style)
+                            Span::styled(tile.as_char().to_string(), style)
                         })
                         .collect::<Vec<Span>>(),
                 )
