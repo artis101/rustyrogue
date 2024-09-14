@@ -48,6 +48,10 @@ impl MapGenerator {
         self
     }
 
+    pub fn get_dungeon(&self) -> Arc<RwLock<GameMapTiles>> {
+        Arc::clone(&self.tiles)
+    }
+
     fn can_add_room(&self, location: Point, width: Coordinate, height: Coordinate) -> bool {
         // check if room is within bounds
         if location.x + width >= self.width || location.y + height >= self.height {

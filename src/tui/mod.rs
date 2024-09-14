@@ -2,7 +2,7 @@ pub mod widgets;
 
 use crate::game::{Game, MessageType};
 use crate::tile::Tile;
-use crate::tui::widgets::InventoryWidget;
+use crate::tui::widgets::inventory::InventoryWidget;
 use crossterm::{
     event::{self, KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},

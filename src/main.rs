@@ -11,6 +11,7 @@ use generator::map::MapGenerator;
 use sdl::SDL;
 use std::env;
 use std::io;
+use tui::widgets::map_view::MapView;
 use tui::Tui;
 
 fn main() -> Result<(), io::Error> {
@@ -27,9 +28,13 @@ fn main() -> Result<(), io::Error> {
         let mut sdl = SDL::new()?;
         sdl.run(&mut game)?;
     } else if use_generator {
-        let mut map_generator = MapGenerator::new(163, 71);
+        let mut map_generator = MapGenerator::new(80, 24);
         map_generator.generate(5); // Generate 5 rooms
-        map_generator.print(true);
+        let dungeon = map_generator.get_dungeon();
+        // build tooling if you dont have it
+        let mut map_view = MapView::new()?;
+        map_view.run(dungeon)?;
+    // Print
     } else {
         // Run the game with Tui renderer (default)
         let mut tui = Tui::new()?;
