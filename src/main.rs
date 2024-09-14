@@ -3,6 +3,7 @@ mod generator;
 mod map;
 mod player;
 mod sdl;
+mod sprite_sheet;
 mod tile;
 mod tui;
 

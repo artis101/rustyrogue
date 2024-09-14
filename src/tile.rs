@@ -82,6 +82,25 @@ impl Tile {
         }
     }
 
+    pub fn sprite_index(&self) -> usize {
+        match self {
+            Tile::Archway { .. } => 0,
+            Tile::Stairs { up: false, .. } => 1,
+            Tile::Stairs { up: true, .. } => 2,
+            Tile::Wall { .. } => 3,
+            Tile::Floor { .. } => 4,
+            Tile::Player { .. } => 5,
+            Tile::Door { open: true, .. } => 6,
+            Tile::Door { open: false, .. } => 7,
+            Tile::Secret { visible: true } => 8,
+            Tile::SecretFloor { visible: true } => 9,
+            Tile::Obelisk { visible: true, .. } => 10,
+            Tile::Pit { visible: true } => 11,
+            Tile::Empty => 12,
+            _ => 4,
+        }
+    }
+
     pub fn term_fg(&self) -> RatatuiColor {
         match self {
             Tile::Archway { .. } => RatatuiColor::LightCyan,

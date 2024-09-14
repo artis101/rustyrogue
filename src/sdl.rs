@@ -1,4 +1,5 @@
 use crate::game::Game;
+use crate::sprite_sheet::SpriteSheet;
 use crate::tile::Tile;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -9,6 +10,7 @@ use std::io;
 pub struct SDL {
     context: sdl2::Sdl,
     canvas: sdl2::render::Canvas<sdl2::video::Window>,
+    sprite_sheet: SpriteSheet,
 }
 
 impl SDL {
@@ -31,7 +33,15 @@ impl SDL {
             .build()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        Ok(SDL { context, canvas })
+        let texture_creator = canvas.texture_creator();
+        let sprite_sheet =
+            SpriteSheet::new(&texture_creator, "assets/colored_tilemap.png", 8, 1, 16)?;
+
+        Ok(SDL {
+            context,
+            canvas,
+            sprite_sheet,
+        })
     }
 
     pub fn run(&mut self, game: &mut Game) -> Result<(), io::Error> {
@@ -80,14 +90,10 @@ impl SDL {
         Ok(())
     }
 
-    fn draw(&mut self, game: &Game) -> Result<(), io::Error> {
-        self.canvas.set_draw_color(Tile::Empty.color());
+    fn draw(&mut self, game: &Game) -> Result<(), String> {
         self.canvas.clear();
 
-        let (width, height) = self
-            .canvas
-            .output_size()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let (width, height) = self.canvas.output_size()?;
         let map = game.get_map();
         let map_width = map[0].len();
         let map_height = map.len();
@@ -101,15 +107,15 @@ impl SDL {
 
         for (y, row) in map.iter().enumerate() {
             for (x, &tile) in row.iter().enumerate() {
-                self.canvas.set_draw_color(tile.color());
+                let dest_rect = Rect::new(
+                    (x as u32 * tile_size + offset_x) as i32,
+                    (y as u32 * tile_size + offset_y) as i32,
+                    tile_size,
+                    tile_size,
+                );
+                let src_rect = self.sprite_sheet.get_tile_rect(tile.sprite_index());
                 self.canvas
-                    .fill_rect(Rect::new(
-                        (x as u32 * tile_size + offset_x) as i32,
-                        (y as u32 * tile_size + offset_y) as i32,
-                        tile_size,
-                        tile_size,
-                    ))
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+                    .copy(&self.sprite_sheet.texture, src_rect, dest_rect)?;
             }
         }
 

@@ -26,6 +26,11 @@
             SDL2_image
             SDL2_ttf
             SDL2_mixer
+            # Additional image support
+            libpng
+            libjpeg
+            libwebp
+            libtiff
             # libtcod
           ];
           shellHook = ''
@@ -37,6 +42,8 @@
             exec zsh
           '';
           RUST_SRC_PATH = "${rustVersion}/lib/rustlib/src/rust/library";
+          # Environment variables for SDL2_image
+          SDL_IMAGE_FORMATS = "png,jpg,webp,tiff";
         };
       }
     );
