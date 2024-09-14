@@ -27,7 +27,7 @@ fn main() -> Result<(), io::Error> {
         let mut sdl = SDL::new()?;
         sdl.run(&mut game)?;
     } else if use_generator {
-        let mut map_generator = MapGenerator::new(157, 30);
+        let mut map_generator = MapGenerator::new(163, 71);
         map_generator.generate(5); // Generate 5 rooms
         map_generator.print(true);
     } else {
