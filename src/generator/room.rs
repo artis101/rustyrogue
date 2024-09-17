@@ -1,7 +1,9 @@
 use crate::map::types::{Coordinate, GameMapTiles, Point};
 use crate::tile::Tile;
+use rand::seq::SliceRandom;
 use std::sync::{Arc, RwLock};
 
+#[derive(Clone)]
 pub struct Room {
     pub location: Point,
     pub width: Coordinate,
@@ -27,9 +29,10 @@ impl Room {
     pub fn populate(&self) {
         self.fill_with_floor();
         self.surround_with_walls();
+        self.place_doors();
     }
 
-    pub fn fill_with_floor(&self) {
+    fn fill_with_floor(&self) {
         let tiles = self.tiles.read().unwrap();
         let max_y = tiles.len();
         let max_x = tiles.first().map_or(0, |row| row.len());
@@ -48,27 +51,107 @@ impl Room {
         }
     }
 
-    pub fn surround_with_walls(&self) {
+    fn surround_with_walls(&self) {
         let tiles = self.tiles.read().unwrap();
         let max_y = tiles.len();
         let max_x = tiles.first().map_or(0, |row| row.len());
         drop(tiles); // Release the read lock
 
         let mut tiles = self.tiles.write().unwrap();
-        for y in self.location.y.saturating_sub(1)..=self.location.y.saturating_add(self.height) {
-            for x in self.location.x.saturating_sub(1)..=self.location.x.saturating_add(self.width)
-            {
+
+        for y in self.location.y..=self.location.y.saturating_add(self.height) {
+            for x in self.location.x..=self.location.x.saturating_add(self.width) {
                 if y < max_y
                     && x < max_x
-                    && (y == self.location.y.saturating_sub(1)
+                    && (y == self.location.y
                         || y == self.location.y.saturating_add(self.height)
-                        || x == self.location.x.saturating_sub(1)
+                        || x == self.location.x
                         || x == self.location.x.saturating_add(self.width))
                 {
                     tiles[y][x] = Tile::Wall { visible: false };
                 }
             }
         }
+    }
+
+    fn get_left_wall(&self) -> Vec<Point> {
+        (self.location.y..self.location.y.saturating_add(self.height))
+            .map(|y| Point::new(self.location.x, y))
+            .collect()
+    }
+
+    fn get_bottom_wall(&self) -> Vec<Point> {
+        (self.location.x..self.location.x.saturating_add(self.width))
+            .map(|x| Point::new(x, self.location.y.saturating_add(self.height)))
+            .collect()
+    }
+
+    fn get_top_wall(&self) -> Vec<Point> {
+        (self.location.x..self.location.x.saturating_add(self.width))
+            .map(|x| Point::new(x, self.location.y))
+            .collect()
+    }
+
+    fn get_right_wall(&self) -> Vec<Point> {
+        (self.location.y..self.location.y.saturating_add(self.height))
+            .map(|y| Point::new(self.location.x.saturating_add(self.width), y))
+            .collect()
+    }
+
+    fn get_walls(&self) -> [Vec<Point>; 4] {
+        [
+            self.get_left_wall(),
+            self.get_bottom_wall(),
+            self.get_top_wall(),
+            self.get_right_wall(),
+        ]
+    }
+
+    fn place_doors(&self) {
+        let walls: [Vec<Point>; 4] = self.get_walls();
+
+        while self.num_doors() < 2 {
+            let random_wall = walls.choose(&mut rand::thread_rng()).unwrap();
+            let random_point = random_wall.choose(&mut rand::thread_rng()).unwrap();
+            let mut tiles = self.tiles.write().unwrap();
+            tiles[random_point.y][random_point.x] = Tile::Door {
+                visible: false,
+                open: false,
+            };
+        }
+    }
+
+    pub fn num_doors(&self) -> u8 {
+        self.get_walls()
+            .iter()
+            .map(|wall| {
+                wall.iter()
+                    .filter(|point| {
+                        let tiles = self.tiles.read().unwrap();
+                        let tile = tiles[point.y][point.x];
+                        drop(tiles); // Release the read lock
+                        matches![tile, Tile::Door { .. }]
+                    })
+                    .count() as u8
+            })
+            .sum()
+    }
+
+    pub fn get_doors(&self) -> Vec<Point> {
+        self.get_walls()
+            .iter()
+            .flat_map(|wall| {
+                wall.iter()
+                    .filter(|point| {
+                        let tiles = self.tiles.read().unwrap();
+                        let tile = tiles[point.y][point.x];
+                        drop(tiles); // Release the read lock
+                        matches![tile, Tile::Door { .. }]
+                    })
+                    .copied()
+                    .collect::<Vec<Point>>()
+            })
+            .collect()
     }
 
     pub fn intersects(
