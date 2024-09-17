@@ -32,6 +32,13 @@ impl Room {
         self.place_doors();
     }
 
+    pub fn center(&self) -> Point {
+        Point::new(
+            self.location.x + self.width / 2,
+            self.location.y + self.height / 2,
+        )
+    }
+
     fn fill_with_floor(&self) {
         let tiles = self.tiles.read().unwrap();
         let max_y = tiles.len();
