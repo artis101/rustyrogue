@@ -29,7 +29,7 @@ fn main() -> Result<(), io::Error> {
         sdl.run(&mut game)?;
     } else if use_generator {
         let mut map_generator = MapGenerator::new(300, 120);
-        map_generator.generate(50);
+        map_generator.generate(5, 20);
         let dungeon = map_generator.get_dungeon();
         // build tooling if you dont have it
         let mut map_view = MapView::new()?;

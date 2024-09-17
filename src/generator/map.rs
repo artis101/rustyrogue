@@ -54,14 +54,17 @@ impl MapGenerator {
         }
     }
 
-    pub fn generate(&mut self, min_room_size: Coordinate) -> &mut Self {
+    pub fn generate(&mut self, min_room_size: Coordinate, max_room_size: Coordinate) -> &mut Self {
         self.fill_with_empty();
 
         // Build the BSP tree
         self.build_bsp_tree(min_room_size);
 
         // Create rooms in the leaf nodes
-        self.create_rooms_in_bsp();
+        self.create_rooms_in_bsp(min_room_size, max_room_size);
+
+        // Populate rooms in parallel using Rayon
+        self.populate_all_rooms();
 
         // Connect rooms via depth-first traversal
         if let Some(ref root) = self.bsp_root {
@@ -87,87 +90,137 @@ impl MapGenerator {
     fn build_bsp_tree(&mut self, min_size: Coordinate) {
         let root = BSPNode::new(0, 0, self.width, self.height);
         self.bsp_root = Some(root);
+        let max_depth = 5; // Adjust this value to control the depth of the tree
         if let Some(ref mut root_node) = self.bsp_root {
-            self.split_node(root_node, min_size);
+            Self::split_node(root_node, min_size, max_depth, 0);
         }
     }
 
-    fn split_node(&mut self, node: &mut BSPNode, min_size: Coordinate) {
-        if node.width > min_size * 2 || node.height > min_size * 2 {
-            let split_vertically = if node.width > node.height {
-                true
-            } else if node.height > node.width {
-                false
-            } else {
-                rand::random::<bool>()
-            };
+    fn split_node(
+        node: &mut BSPNode,
+        min_size: Coordinate,
+        max_depth: usize,
+        current_depth: usize,
+    ) {
+        if current_depth >= max_depth {
+            return;
+        }
 
-            if split_vertically && node.width > min_size * 2 {
-                // Split vertically
-                let split = rand::thread_rng().gen_range(min_size..(node.width - min_size));
-                node.left = Some(Box::new(BSPNode::new(node.x, node.y, split, node.height)));
-                node.right = Some(Box::new(BSPNode::new(
-                    node.x + split,
-                    node.y,
-                    node.width - split,
-                    node.height,
-                )));
-            } else if node.height > min_size * 2 {
-                // Split horizontally
-                let split = rand::thread_rng().gen_range(min_size..(node.height - min_size));
-                node.left = Some(Box::new(BSPNode::new(node.x, node.y, node.width, split)));
-                node.right = Some(Box::new(BSPNode::new(
-                    node.x,
-                    node.y + split,
-                    node.width,
-                    node.height - split,
-                )));
-            }
+        let can_split_horizontally = node.width >= min_size * 2;
+        let can_split_vertically = node.height >= min_size * 2;
 
-            if let Some(ref mut left) = node.left {
-                self.split_node(left, min_size);
-            }
-            if let Some(ref mut right) = node.right {
-                self.split_node(right, min_size);
-            }
+        if !can_split_horizontally && !can_split_vertically {
+            return;
+        }
+
+        let split_vertically = if can_split_horizontally && can_split_vertically {
+            rand::random::<bool>()
+        } else {
+            can_split_horizontally
+        };
+
+        if split_vertically {
+            // Split vertically
+            let split = rand::thread_rng().gen_range(min_size..(node.width - min_size + 1));
+            node.left = Some(Box::new(BSPNode::new(node.x, node.y, split, node.height)));
+            node.right = Some(Box::new(BSPNode::new(
+                node.x + split,
+                node.y,
+                node.width - split,
+                node.height,
+            )));
+        } else {
+            // Split horizontally
+            let split = rand::thread_rng().gen_range(min_size..(node.height - min_size + 1));
+            node.left = Some(Box::new(BSPNode::new(node.x, node.y, node.width, split)));
+            node.right = Some(Box::new(BSPNode::new(
+                node.x,
+                node.y + split,
+                node.width,
+                node.height - split,
+            )));
+        }
+
+        if let Some(ref mut left) = node.left {
+            Self::split_node(left, min_size, max_depth, current_depth + 1);
+        }
+        if let Some(ref mut right) = node.right {
+            Self::split_node(right, min_size, max_depth, current_depth + 1);
         }
     }
 
-    fn create_rooms_in_bsp(&mut self) {
+    fn create_rooms_in_bsp(&mut self, min_room_size: Coordinate, max_room_size: Coordinate) {
         let mut rooms = Vec::new();
         if let Some(ref mut root) = self.bsp_root {
-            self.create_rooms_in_node(root, &mut rooms);
+            Self::collect_rooms_in_node(root, &mut rooms, min_room_size, max_room_size);
         }
         self.rooms = rooms;
     }
 
-    fn create_rooms_in_node(&mut self, node: &mut BSPNode, rooms: &mut Vec<Room>) {
+    fn collect_rooms_in_node(
+        node: &mut BSPNode,
+        rooms: &mut Vec<Room>,
+        min_room_size: Coordinate,
+        max_room_size: Coordinate,
+    ) {
         if node.is_leaf() {
-            // Create a room in this leaf node
             let mut rng = rand::thread_rng();
-            let room_width = rng.gen_range((node.width / 2)..(node.width - 2));
-            let room_height = rng.gen_range((node.height / 2)..(node.height - 2));
-            let room_x = rng.gen_range((node.x + 1)..=(node.x + node.width - room_width - 1));
-            let room_y = rng.gen_range((node.y + 1)..=(node.y + node.height - room_height - 1));
+            let padding = 2; // Padding between the room and the partition edges
+
+            let max_room_width = (node.width - padding * 2).min(max_room_size);
+            let max_room_height = (node.height - padding * 2).min(max_room_size);
+
+            if max_room_width < min_room_size || max_room_height < min_room_size {
+                // If the partition is too small, skip room creation
+                return;
+            }
+
+            let room_width = rng.gen_range(min_room_size..=max_room_width);
+            let room_height = rng.gen_range(min_room_size..=max_room_height);
+
+            let x_range = node.x + padding..=node.x + node.width - room_width - padding;
+            let y_range = node.y + padding..=node.y + node.height - room_height - padding;
+
+            let room_x = if x_range.is_empty() {
+                node.x + padding
+            } else {
+                rng.gen_range(x_range)
+            };
+
+            let room_y = if y_range.is_empty() {
+                node.y + padding
+            } else {
+                rng.gen_range(y_range)
+            };
+
             let location = Point::new(room_x, room_y);
 
-            let room = Room::new(location, room_width, room_height, Arc::clone(&self.tiles));
-            room.populate();
+            let room = Room::new(location, room_width, room_height);
             node.room = Some(room.clone());
             rooms.push(room);
         } else {
             if let Some(ref mut left) = node.left {
-                self.create_rooms_in_node(left, rooms);
+                Self::collect_rooms_in_node(left, rooms, min_room_size, max_room_size);
             }
             if let Some(ref mut right) = node.right {
-                self.create_rooms_in_node(right, rooms);
+                Self::collect_rooms_in_node(right, rooms, min_room_size, max_room_size);
             }
         }
     }
 
+    fn populate_all_rooms(&self) {
+        let tiles = Arc::clone(&self.tiles);
+
+        // Use Rayon to populate rooms in parallel
+        self.rooms.par_iter().for_each(|room| {
+            let tiles_clone = Arc::clone(&tiles);
+            room.populate(&tiles_clone);
+        });
+    }
+
     fn connect_rooms_bsp(&self, node: &BSPNode) {
         if !node.is_leaf() {
-            if let (Some(ref left), Some(ref right)) = (node.left, node.right) {
+            if let (Some(left), Some(right)) = (node.left.as_ref(), node.right.as_ref()) {
                 self.connect_rooms_bsp(left);
                 self.connect_rooms_bsp(right);
 
@@ -206,17 +259,32 @@ impl MapGenerator {
             let dy = end.y as isize - current.y as isize;
 
             let mut directions = Vec::new();
-            if dx != 0 {
+
+            // Bias towards moving in the general direction of the end point
+            if dx != 0 && rng.gen_bool(0.7) {
                 directions.push((dx.signum(), 0));
             }
-            if dy != 0 {
+            if dy != 0 && rng.gen_bool(0.7) {
                 directions.push((0, dy.signum()));
             }
-            // Random directions for drunkard's walk
-            directions.push((-1, 0));
-            directions.push((1, 0));
-            directions.push((0, -1));
-            directions.push((0, 1));
+
+            // Add random directions with less probability
+            if rng.gen_bool(0.3) {
+                directions.push((-1, 0));
+                directions.push((1, 0));
+                directions.push((0, -1));
+                directions.push((0, 1));
+            }
+
+            // If no direction was chosen due to probabilities, default to moving towards the end
+            if directions.is_empty() {
+                if dx != 0 {
+                    directions.push((dx.signum(), 0));
+                }
+                if dy != 0 {
+                    directions.push((0, dy.signum()));
+                }
+            }
 
             let (dx, dy) = *directions.choose(&mut rng).unwrap();
 
@@ -247,12 +315,6 @@ impl MapGenerator {
         }
     }
 
-    fn populate_all_rooms(&self) {
-        self.rooms.par_iter().for_each(|room| {
-            room.populate();
-        });
-    }
-
     #[allow(dead_code)]
     pub fn print(&self, with_border: bool) {
         println!("{}x{}", self.width, self.height);
@@ -280,3 +342,4 @@ impl MapGenerator {
         }
     }
 }
+
