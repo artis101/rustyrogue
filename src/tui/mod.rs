@@ -131,7 +131,8 @@ impl Tui {
     }
 
     fn prepare_map_widget(game: &Game, map_size: (usize, usize)) -> Paragraph<'static> {
-        let map: &Vec<Vec<Tile>> = game.get_map();
+        let map_arc = game.get_map();
+        let map = map_arc.read().unwrap();
         let player_pos = game.get_player_position();
 
         let visible_width = map_size.0;

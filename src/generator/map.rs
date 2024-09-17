@@ -44,6 +44,9 @@ pub struct MapGenerator {
 }
 
 impl MapGenerator {
+    const MAIN_DIRECTION_PROBABILITY: f64 = 0.7;
+    const RANDOM_DIRECTION_PROBABILITY: f64 = 0.3;
+
     pub fn new(width: Coordinate, height: Coordinate) -> Self {
         MapGenerator {
             width,
@@ -76,6 +79,10 @@ impl MapGenerator {
 
     pub fn get_dungeon(&self) -> Arc<RwLock<GameMapTiles>> {
         Arc::clone(&self.tiles)
+    }
+
+    pub fn get_rooms(&self) -> &Vec<Room> {
+        &self.rooms
     }
 
     fn fill_with_empty(&self) {
@@ -227,7 +234,7 @@ impl MapGenerator {
                 let left_room = self.get_room_in_subtree(left);
                 let right_room = self.get_room_in_subtree(right);
                 if let (Some(lr), Some(rr)) = (left_room, right_room) {
-                    self.connect_points(lr.center(), rr.center());
+                    self.drunken_walk_corridor(lr.center(), rr.center());
                 }
             }
         }
@@ -248,7 +255,7 @@ impl MapGenerator {
         }
     }
 
-    fn connect_points(&self, start: Point, end: Point) {
+    fn drunken_walk_corridor(&self, start: Point, end: Point) {
         let mut rng = rand::thread_rng();
         let mut current = start;
 
@@ -261,15 +268,15 @@ impl MapGenerator {
             let mut directions = Vec::new();
 
             // Bias towards moving in the general direction of the end point
-            if dx != 0 && rng.gen_bool(0.7) {
+            if dx != 0 && rng.gen_bool(Self::MAIN_DIRECTION_PROBABILITY) {
                 directions.push((dx.signum(), 0));
             }
-            if dy != 0 && rng.gen_bool(0.7) {
+            if dy != 0 && rng.gen_bool(Self::MAIN_DIRECTION_PROBABILITY) {
                 directions.push((0, dy.signum()));
             }
 
             // Add random directions with less probability
-            if rng.gen_bool(0.3) {
+            if rng.gen_bool(Self::RANDOM_DIRECTION_PROBABILITY) {
                 directions.push((-1, 0));
                 directions.push((1, 0));
                 directions.push((0, -1));
@@ -342,4 +349,3 @@ impl MapGenerator {
         }
     }
 }
-

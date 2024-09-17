@@ -2,13 +2,13 @@ mod game;
 mod generator;
 mod map;
 mod player;
-mod sdl;
+// mod sdl;
 mod tile;
 mod tui;
 
 use game::Game;
 use generator::map::MapGenerator;
-use sdl::SDL;
+// use sdl::SDL;
 use std::env;
 use std::io;
 use tui::widgets::map_view::MapView;
@@ -17,17 +17,19 @@ use tui::Tui;
 fn main() -> Result<(), io::Error> {
     // Parse command-line arguments
     let args: Vec<String> = env::args().collect();
-    let use_sdl = args.contains(&"--sdl".to_string());
+    // let use_sdl = args.contains(&"--sdl".to_string());
     let use_generator = args.contains(&"--generate".to_string());
 
     // Create game instance
-    let mut game = Game::new("tutorial")?;
+    let mut game = Game::new()?;
 
-    if use_sdl {
-        // Run the game with SDL renderer
-        let mut sdl = SDL::new()?;
-        sdl.run(&mut game)?;
-    } else if use_generator {
+    // if use_sdl {
+    //     // Run the game with SDL renderer
+    //     let mut sdl = SDL::new()?;
+    //     sdl.run(&mut game)?;
+    // } else
+
+    if use_generator {
         let mut map_generator = MapGenerator::new(300, 120);
         map_generator.generate(5, 20);
         let dungeon = map_generator.get_dungeon();

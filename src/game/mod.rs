@@ -4,8 +4,11 @@ use crate::map::{
 };
 use crate::player::Player;
 use crate::tile::Tile;
+use crate::MapGenerator;
+use rand::seq::SliceRandom;
 use std::cmp::{max, min};
 use std::io;
+use std::sync::{Arc, RwLock};
 
 pub enum MessageType {
     Info,
@@ -38,12 +41,42 @@ const DIRECTIONS: [(i32, i32); 8] = [
 ];
 
 impl Game {
-    pub fn new(map_file: &str) -> io::Result<Self> {
-        let full_map_file = format!("maps/{}.txt", map_file);
-        let map_hint_file = format!("maps/{}_hint.txt", map_file);
-        let map = Map::load(&full_map_file, &map_hint_file)?;
+    pub fn new() -> io::Result<Self> {
+        // Set the dimensions and room sizes for the map generator
+        let width = 400;
+        let height = 200;
+        let min_room_size = 10;
+        let max_room_size = 25;
+
+        // Create the map generator and generate the dungeon
+        let mut map_generator = MapGenerator::new(width, height);
+        map_generator.generate(min_room_size, max_room_size);
+
+        // Get the tiles and rooms from the map generator
+        let tiles_arc = map_generator.get_dungeon();
+        let rooms = map_generator.get_rooms();
+
+        // Choose a random room to place the player
+        let mut rng = rand::thread_rng();
+        let random_room = rooms.choose(&mut rng).expect("No rooms generated");
+        let player_position = random_room.center();
+
+        // Place the player tile '@' in the selected room
+        {
+            let mut tiles = tiles_arc.write().unwrap();
+            tiles[player_position.y][player_position.x] = Tile::Player {
+                is_dead: false,
+                is_cursed: false,
+            };
+        }
+
+        // Create the Map instance from the generated tiles
+        let map = Map::from_tiles(tiles_arc);
+
+        // Create the player
         let player = Player::new();
-        let player_position = map.find_player().unwrap_or(Point::new(0, 0));
+
+        // Create the Game instance
         let mut game = Game {
             map,
             player,
@@ -174,7 +207,7 @@ impl Game {
         self.map.update_fov(self.player_position, fov_radius);
     }
 
-    pub fn get_map(&self) -> &GameMapTiles {
+    pub fn get_map(&self) -> &Arc<RwLock<GameMapTiles>> {
         self.map.get_tiles()
     }
 

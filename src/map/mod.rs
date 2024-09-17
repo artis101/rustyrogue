@@ -4,11 +4,12 @@ use crate::tile::Tile;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
+use std::sync::{Arc, RwLock};
 
 pub mod types;
 
 pub struct Map {
-    tiles: GameMapTiles,
+    tiles: Arc<RwLock<GameMapTiles>>,
     visible_tiles: HashSet<Point>,
 }
 
@@ -31,41 +32,46 @@ impl Map {
         }
 
         Ok(Map {
-            tiles,
+            tiles: Arc::new(RwLock::new(tiles)),
             visible_tiles: HashSet::new(),
         })
     }
 
-    pub fn width(&self) -> Coordinate {
-        self.tiles.first().map(|row| row.len()).unwrap_or(0)
+    pub fn width(&self) -> usize {
+        let tiles = self.tiles.read().unwrap();
+        tiles[0].len()
     }
 
-    pub fn height(&self) -> Coordinate {
-        self.tiles.len()
+    pub fn height(&self) -> usize {
+        let tiles = self.tiles.read().unwrap();
+        tiles.len()
     }
 
-    pub fn get_tiles(&self) -> &GameMapTiles {
-        &self.tiles
-    }
-
-    pub fn get_tile(&self, point: Point) -> Tile {
-        self.tiles
-            .get(point.y)
-            .and_then(|row| row.get(point.x))
-            .copied()
-            .unwrap_or(Tile::Empty)
-    }
-
-    pub fn set_tile(&mut self, point: Point, tile: Tile) {
-        if let Some(row) = self.tiles.get_mut(point.y) {
-            if let Some(t) = row.get_mut(point.x) {
-                *t = tile;
-            }
+    pub fn from_tiles(tiles: Arc<RwLock<GameMapTiles>>) -> Self {
+        Map {
+            tiles,
+            visible_tiles: HashSet::new(),
         }
     }
 
-    pub fn is_walkable(&self, point: Point) -> bool {
-        self.get_tile(point).is_walkable()
+    pub fn get_tiles(&self) -> &Arc<RwLock<GameMapTiles>> {
+        &self.tiles
+    }
+
+    pub fn is_walkable(&self, position: Point) -> bool {
+        let tiles = self.tiles.read().unwrap();
+        let tile = tiles[position.y][position.x];
+        tile.is_walkable()
+    }
+
+    pub fn set_tile(&mut self, position: Point, tile: Tile) {
+        let mut tiles = self.tiles.write().unwrap();
+        tiles[position.y][position.x] = tile;
+    }
+
+    pub fn get_tile(&self, position: Point) -> Tile {
+        let tiles = self.tiles.read().unwrap();
+        tiles[position.y][position.x]
     }
 
     pub fn is_deadly(&self, point: Point) -> bool {
@@ -73,7 +79,8 @@ impl Map {
     }
 
     pub fn find_player(&self) -> Option<Point> {
-        for (y, row) in self.tiles.iter().enumerate() {
+        let tiles = self.tiles.read().unwrap();
+        for (y, row) in tiles.iter().enumerate() {
             for (x, &tile) in row.iter().enumerate() {
                 if let Tile::Player { .. } = tile {
                     return Some(Point { x, y });
@@ -84,16 +91,17 @@ impl Map {
     }
 
     pub fn is_interactable(&self, point: Point) -> bool {
+        let tiles = self.tiles.read().unwrap();
         matches!(
-            self.tiles[point.y][point.x],
-            Tile::Door { .. } | Tile::Secret { visible: true } // you can interact with visible
-                                                               // things for now
+            tiles[point.y][point.x],
+            Tile::Door { .. } | Tile::Secret { visible: true }
         )
     }
 
     pub fn interact_tile(&mut self, point: Point) {
-        if let Tile::Door { open, visible } = self.tiles[point.y][point.x] {
-            self.tiles[point.y][point.x] = Tile::Door {
+        let mut tiles = self.tiles.write().unwrap();
+        if let Tile::Door { open, visible } = tiles[point.y][point.x] {
+            tiles[point.y][point.x] = Tile::Door {
                 open: !open,
                 visible,
             };
@@ -271,8 +279,9 @@ impl Map {
     }
 
     pub fn get_obelisk_cursing_tile(&self, pov: Point) -> Option<Tile> {
+        let tiles = self.tiles.read().unwrap();
         // get nearest obelisk with direct line of sight to the player
-        for (y, row) in self.tiles.iter().enumerate() {
+        for (y, row) in tiles.iter().enumerate() {
             for (x, tile) in row.iter().enumerate() {
                 let point = Point::new(x, y);
 
