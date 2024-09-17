@@ -74,6 +74,8 @@ impl MapGenerator {
             self.connect_rooms_bsp(root);
         }
 
+        self.place_all_room_doors();
+
         self
     }
 
@@ -222,6 +224,15 @@ impl MapGenerator {
         self.rooms.par_iter().for_each(|room| {
             let tiles_clone = Arc::clone(&tiles);
             room.populate(&tiles_clone);
+        });
+    }
+
+    fn place_all_room_doors(&self) {
+        let tiles = Arc::clone(&self.tiles);
+        // Use Rayon to place doors in parallel
+        self.rooms.par_iter().for_each(|room| {
+            let tiles_clone = Arc::clone(&tiles);
+            room.place_doors(&tiles_clone);
         });
     }
 
