@@ -12,7 +12,9 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
-        rustVersion = pkgs.rust-bin.stable.latest.default;
+        rustVersion = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [ "rust-src" ];
+        };
       in
       {
         devShell = pkgs.mkShell {
@@ -34,9 +36,9 @@
             rustc --version
             cargo --version
             echo "-------------------------------------"
+            export RUST_SRC_PATH="${rustVersion}/lib/rustlib/src/rust/library"
             exec zsh
           '';
-          RUST_SRC_PATH = "${rustVersion}/lib/rustlib/src/rust/library";
         };
       }
     );
