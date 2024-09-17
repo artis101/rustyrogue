@@ -1,6 +1,7 @@
 use crate::generator::room::Room;
 use crate::map::types::{Coordinate, GameMapTiles, Point};
 use crate::tile::Tile;
+use rand::seq::SliceRandom;
 use rand::Rng;
 use rayon::prelude::*;
 use std::sync::{Arc, RwLock};
@@ -45,6 +46,7 @@ impl MapGenerator {
 
         // Populate rooms in parallel
         self.populate_all_rooms();
+        self.connect_rooms();
         self
     }
 
@@ -82,6 +84,50 @@ impl MapGenerator {
         self.rooms.par_iter().for_each(|room| {
             room.populate();
         });
+    }
+
+    fn connect_rooms(&self) {
+        let mut rng = rand::thread_rng();
+        let mut rooms = self.rooms.clone();
+        rooms.shuffle(&mut rng);
+
+        for i in 0..rooms.len() {
+            if i + 1 < rooms.len() {
+                let room_a = &rooms[i];
+                let room_b = &rooms[i + 1];
+                let point_a = room_a.get_doors().choose(&mut rng).unwrap().clone();
+                let point_b = room_b.get_doors().choose(&mut rng).unwrap().clone();
+                self.connect_points(point_a, point_b);
+            }
+        }
+    }
+
+    fn connect_points(&self, point_a: Point, point_b: Point) {
+        let mut tiles = self.tiles.write().unwrap();
+        let mut x = point_a.x;
+        let mut y = point_a.y;
+        while x != point_b.x {
+            if x < point_b.x {
+                x += 1;
+            } else {
+                x -= 1;
+            }
+            tiles[y][x] = Tile::Floor {
+                visible: false,
+                cursed: false,
+            };
+        }
+        while y != point_b.y {
+            if y < point_b.y {
+                y += 1;
+            } else {
+                y -= 1;
+            }
+            tiles[y][x] = Tile::Floor {
+                visible: false,
+                cursed: false,
+            };
+        }
     }
 
     pub fn print(&self, with_border: bool) {
