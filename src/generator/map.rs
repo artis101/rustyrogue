@@ -93,10 +93,10 @@ impl MapGenerator {
 
         for i in 0..rooms.len() {
             if i + 1 < rooms.len() {
-                let room_a = &rooms[i];
-                let room_b = &rooms[i + 1];
-                let point_a = room_a.get_doors().choose(&mut rng).unwrap().clone();
-                let point_b = room_b.get_doors().choose(&mut rng).unwrap().clone();
+                let room_a = rooms[i].clone();
+                let room_b = rooms[i + 1].clone();
+                let point_a = room_a.location;
+                let point_b = room_b.location;
                 self.connect_points(point_a, point_b);
             }
         }
@@ -104,32 +104,27 @@ impl MapGenerator {
 
     fn connect_points(&self, point_a: Point, point_b: Point) {
         let mut tiles = self.tiles.write().unwrap();
-        let mut x = point_a.x;
-        let mut y = point_a.y;
-        while x != point_b.x {
-            if x < point_b.x {
-                x += 1;
-            } else {
-                x -= 1;
-            }
-            tiles[y][x] = Tile::Floor {
+        let mut rng = rand::thread_rng();
+        let mut current_point = point_a;
+
+        while current_point != point_b {
+            tiles[current_point.y][current_point.x] = Tile::Floor {
                 visible: false,
                 cursed: false,
             };
-        }
-        while y != point_b.y {
-            if y < point_b.y {
-                y += 1;
-            } else {
-                y -= 1;
+
+            let direction: u8 = rng.gen_range(0..4);
+            match direction {
+                0 if current_point.x < point_b.x => current_point.x += 1,
+                1 if current_point.x > point_b.x => current_point.x -= 1,
+                2 if current_point.y < point_b.y => current_point.y += 1,
+                3 if current_point.y > point_b.y => current_point.y -= 1,
+                _ => {}
             }
-            tiles[y][x] = Tile::Floor {
-                visible: false,
-                cursed: false,
-            };
         }
     }
 
+    #[allow(dead_code)]
     pub fn print(&self, with_border: bool) {
         println!("{}x{}", self.width, self.height);
         if with_border {
