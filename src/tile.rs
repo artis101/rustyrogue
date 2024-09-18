@@ -23,6 +23,9 @@ pub enum Tile {
     Wall {
         visible: bool,
     },
+    Column {
+        visible: bool,
+    },
     Floor {
         visible: bool,
         cursed: bool,
@@ -87,6 +90,7 @@ impl Tile {
             Tile::Stairs { up: false, .. } => '>',
             Tile::Stairs { up: true, .. } => '<',
             Tile::Wall { .. } => '#',
+            Tile::Column { .. } => 'o',
             Tile::SecretFloor { visible: true } => '_',
             Tile::Player { .. } => '@',
             Tile::Door { open: true, .. } => '+',
@@ -116,6 +120,7 @@ impl Tile {
             // dark gray/gray when visible tiles
             Tile::Stairs { visible, .. }
             | Tile::Wall { visible }
+            | Tile::Column { visible }
             | Tile::Pit { visible }
             | Tile::SecretFloor { visible } => {
                 if *visible {
@@ -175,12 +180,15 @@ impl Tile {
         }
     }
 
+    #[allow(dead_code)]
     pub fn color(&self) -> SDLColor {
         match self {
             Tile::Archway { .. } => SDLColor::RGB(0, 255, 255),
             Tile::Stairs { up: false, .. } => SDLColor::RGB(100, 100, 100),
             Tile::Stairs { up: true, .. } => SDLColor::RGB(150, 150, 150),
-            Tile::Wall { .. } | Tile::SecretFloor { .. } => SDLColor::RGB(255, 255, 255),
+            Tile::Wall { .. } | Tile::SecretFloor { .. } | Tile::Column { .. } => {
+                SDLColor::RGB(255, 255, 255)
+            }
             Tile::Floor { .. } => SDLColor::RGB(50, 50, 50),
             Tile::Player { .. } => SDLColor::RGB(255, 255, 0),
             Tile::Door { open: true, .. } => SDLColor::RGB(150, 75, 0),
@@ -197,7 +205,13 @@ impl Tile {
 
     pub fn is_walkable(&self) -> bool {
         match self {
-            Tile::Wall { .. } | Tile::Secret { .. } | Tile::Obelisk { .. } => false,
+            Tile::Wall { .. }
+            | Tile::Secret { .. }
+            | Tile::Obelisk { .. }
+            | Tile::Column { .. }
+            | Tile::Wither { .. }
+            | Tile::Bat { .. }
+            | Tile::Brute { .. } => false,
             Tile::Archway { locked } => !locked,
             Tile::Door { open, .. } => *open,
             _ => true,
@@ -216,6 +230,7 @@ impl Tile {
                 visible: false,
             },
             '#' => Tile::Wall { visible: false },
+            'o' => Tile::Column { visible: false },
             '.' => Tile::Floor {
                 visible: false,
                 cursed: false,

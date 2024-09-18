@@ -1,5 +1,6 @@
 use crate::map::types::{Coordinate, GameMapTiles, Point};
 use crate::tile::Tile;
+use rand::seq::SliceRandom;
 use rand::Rng;
 use std::sync::{Arc, RwLock};
 
@@ -42,6 +43,7 @@ impl Room {
     pub fn populate(&mut self, tiles: &Arc<RwLock<GameMapTiles>>) {
         self.fill_with_floor(tiles);
         self.surround_with_walls(tiles);
+        self.place_columns(tiles);
         self.determine_room_type(tiles);
 
         let mut rng = rand::thread_rng();
@@ -124,28 +126,72 @@ impl Room {
 
     fn place_secret(&self, tiles: &Arc<RwLock<GameMapTiles>>, is_secret_room: bool) {
         let mut rng = rand::thread_rng();
-        let x = rng.gen_range(self.location.x + 1..self.location.x + self.width - 1);
-        let y = rng.gen_range(self.location.y + 1..self.location.y + self.height - 1);
 
+        // Find positions adjacent to columns where secrets can be placed
+        let mut potential_positions = Vec::new();
+
+        let x_start = self.location.x + 1;
+        let x_end = self.location.x + self.width - 1;
+        let y_start = self.location.y + 1;
+        let y_end = self.location.y + self.height - 1;
+
+        let tiles_read = tiles.read().unwrap();
+
+        // Scan the room for columns and collect adjacent floor positions
+        for y in y_start..y_end {
+            for x in x_start..x_end {
+                if let Tile::Column { .. } = tiles_read[y][x] {
+                    // Adjacent positions to the column
+                    let adjacent_positions = vec![
+                        (x.wrapping_sub(1), y),
+                        (x + 1, y),
+                        (x, y.wrapping_sub(1)),
+                        (x, y + 1),
+                    ];
+
+                    for &(ax, ay) in &adjacent_positions {
+                        if ax >= x_start && ax < x_end && ay >= y_start && ay < y_end {
+                            if let Tile::Floor { .. } = tiles_read[ay][ax] {
+                                potential_positions.push((ax, ay));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        drop(tiles_read); // Release the read lock
+
+        // Determine the rarity of the secret
         let rarity = if is_secret_room {
-            // In secret rooms, rarity is 100 (90%) or 1000 (10%)
             if rng.gen_bool(0.9) {
                 100
             } else {
                 1000
             }
         } else {
-            // In normal rooms, assign rarity differently
-            // For example, rarities of 1, 10, or 100
             let rarity_values = [1, 10, 100];
-            rarity_values[rng.gen_range(0..rarity_values.len())]
+            *rarity_values.choose(&mut rng).unwrap()
         };
 
         let mut tiles_write = tiles.write().unwrap();
-        tiles_write[y][x] = Tile::Secret {
-            visible: false,
-            rarity,
-        };
+
+        if !potential_positions.is_empty() {
+            // Place the secret behind a column
+            let &(x, y) = potential_positions.choose(&mut rng).unwrap();
+            tiles_write[y][x] = Tile::Secret {
+                visible: false,
+                rarity,
+            };
+        } else {
+            // If no columns exist, place the secret at a random floor position
+            let x = rng.gen_range(x_start..x_end);
+            let y = rng.gen_range(y_start..y_end);
+            tiles_write[y][x] = Tile::Secret {
+                visible: false,
+                rarity,
+            };
+        }
     }
 
     fn place_mobs(&self, tiles: &Arc<RwLock<GameMapTiles>>) {
@@ -411,6 +457,27 @@ impl Room {
                 {
                     tiles_write[y][x] = Tile::Wall { visible: false };
                 }
+            }
+        }
+    }
+
+    fn place_columns(&self, tiles_arc: &Arc<RwLock<GameMapTiles>>) {
+        let mut rng = rand::thread_rng();
+
+        // 50% chance to place columns in the corners of the room
+        if rng.gen_bool(0.5) {
+            let mut tiles_write = tiles_arc.write().unwrap();
+
+            let x1 = self.location.x + 2;
+            let x2 = self.location.x + self.width - 2;
+            let y1 = self.location.y + 2;
+            let y2 = self.location.y + self.height - 2;
+
+            // Place columns in corners
+            let positions = vec![(x1, y1), (x2, y1), (x1, y2), (x2, y2)];
+
+            for &(x, y) in &positions {
+                tiles_write[y][x] = Tile::Column { visible: false };
             }
         }
     }

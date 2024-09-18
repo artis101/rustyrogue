@@ -14,7 +14,8 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn load(filename: &str, hint_filename: &str) -> io::Result<Self> {
+    #[allow(dead_code)]
+    pub fn load(filename: &str) -> io::Result<Self> {
         let file = File::open(filename)?;
         let reader = BufReader::new(file);
         let mut tiles = Vec::new();
@@ -22,13 +23,6 @@ impl Map {
         for line in reader.lines() {
             let line = line?;
             tiles.push(line.chars().map(Tile::from_char).collect());
-        }
-
-        let hint_file = File::open(hint_filename);
-        if let Ok(hint_file) = hint_file {
-            // read json file
-            let _reader = BufReader::new(hint_file);
-            // resolve secrets in map
         }
 
         Ok(Map {
@@ -78,6 +72,7 @@ impl Map {
         matches!(self.get_tile(point), Tile::Pit { .. })
     }
 
+    #[allow(dead_code)]
     pub fn find_player(&self) -> Option<Point> {
         let tiles = self.tiles.read().unwrap();
         for (y, row) in tiles.iter().enumerate() {
@@ -172,60 +167,100 @@ impl Map {
     fn is_opaque(&self, point: Point) -> bool {
         matches!(
             self.get_tile(point),
-            Tile::Wall { .. } | Tile::Door { open: false, .. }
+            Tile::Wall { .. }
+                | Tile::Door { open: false, .. }
+                | Tile::Column { .. }
+                | Tile::Secret { .. }
+                | Tile::Wither { .. }
+                | Tile::Bat { .. }
+                | Tile::Brute { .. }
         )
     }
 
     fn update_tile_visibility(&mut self, point: Point, visible: bool) {
-        let tile = self.get_tile(point);
-        let new_tile = match tile {
-            Tile::Wall { .. } => Tile::Wall { visible },
-            Tile::Floor { cursed, .. } => Tile::Floor { cursed, visible },
-            Tile::Pit { .. } => Tile::Pit { visible },
-            Tile::Secret { rarity, .. } => Tile::Secret { rarity, visible },
-            Tile::SecretFloor { .. } => Tile::SecretFloor { visible },
-            Tile::Door { open, .. } => Tile::Door { open, visible },
+        let mut tiles_write = self.tiles.write().unwrap();
+        let tile = &mut tiles_write[point.y][point.x];
+        match tile {
+            Tile::Wall { .. } => {
+                *tile = Tile::Wall { visible };
+            }
+            Tile::Pit { .. } => {
+                *tile = Tile::Pit { visible };
+            }
+            Tile::Floor { cursed, .. } => {
+                *tile = Tile::Floor {
+                    cursed: *cursed,
+                    visible,
+                };
+            }
+            Tile::Secret { rarity, .. } => {
+                *tile = Tile::Secret {
+                    rarity: *rarity,
+                    visible,
+                };
+            }
+            Tile::SecretFloor { .. } => {
+                *tile = Tile::SecretFloor { visible };
+            }
+            Tile::Door { open, .. } => {
+                *tile = Tile::Door {
+                    open: *open,
+                    visible,
+                };
+            }
             Tile::Obelisk {
                 curse,
                 fov,
                 damage_hp,
                 reduce_fov_radius,
                 ..
-            } => Tile::Obelisk {
-                curse,
-                fov,
-                damage_hp,
-                reduce_fov_radius,
-                visible,
-            },
+            } => {
+                *tile = Tile::Obelisk {
+                    curse: *curse,
+                    fov: *fov,
+                    damage_hp: *damage_hp,
+                    reduce_fov_radius: *reduce_fov_radius,
+                    visible,
+                };
+            }
             Tile::Wither {
                 hp, damage, fov, ..
-            } => Tile::Wither {
-                hp,
-                damage,
-                fov,
-                visible,
-            },
+            } => {
+                *tile = Tile::Wither {
+                    hp: *hp,
+                    damage: *damage,
+                    fov: *fov,
+                    visible,
+                };
+            }
             Tile::Bat {
                 hp, damage, fov, ..
-            } => Tile::Bat {
-                hp,
-                damage,
-                fov,
-                visible,
-            },
+            } => {
+                *tile = Tile::Bat {
+                    hp: *hp,
+                    damage: *damage,
+                    fov: *fov,
+                    visible,
+                };
+            }
             Tile::Brute {
                 hp, damage, fov, ..
-            } => Tile::Brute {
-                hp,
-                damage,
-                fov,
-                visible,
-            },
-            // Update other tile types as needed
-            _ => tile,
-        };
-        self.set_tile(point, new_tile);
+            } => {
+                *tile = Tile::Brute {
+                    hp: *hp,
+                    damage: *damage,
+                    fov: *fov,
+                    visible,
+                };
+            }
+            Tile::Player { is_dead, .. } => {
+                *tile = Tile::Player {
+                    is_dead: *is_dead,
+                    is_cursed: false,
+                };
+            }
+            _ => {}
+        }
     }
 
     fn clear_curse_from_all_tiles(&mut self) {
