@@ -242,8 +242,8 @@ impl MapGenerator {
                 self.connect_rooms_bsp(left);
                 self.connect_rooms_bsp(right);
 
-                let left_room = self.get_room_in_subtree(left);
-                let right_room = self.get_room_in_subtree(right);
+                let left_room = Self::get_room_in_subtree(left);
+                let right_room = Self::get_room_in_subtree(right);
                 if let (Some(lr), Some(rr)) = (left_room, right_room) {
                     self.drunken_walk_corridor(lr.center(), rr.center());
                 }
@@ -251,17 +251,17 @@ impl MapGenerator {
         }
     }
 
-    fn get_room_in_subtree<'a>(&'a self, node: &'a BSPNode) -> Option<&'a Room> {
+    fn get_room_in_subtree(node: &BSPNode) -> Option<&Room> {
         if let Some(ref room) = node.room {
             Some(room)
         } else {
             node.left
                 .as_ref()
-                .and_then(|left| self.get_room_in_subtree(left))
+                .and_then(|left| Self::get_room_in_subtree(left))
                 .or_else(|| {
                     node.right
                         .as_ref()
-                        .and_then(|right| self.get_room_in_subtree(right))
+                        .and_then(|right| Self::get_room_in_subtree(right))
                 })
         }
     }
