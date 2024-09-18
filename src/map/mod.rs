@@ -94,7 +94,7 @@ impl Map {
         let tiles = self.tiles.read().unwrap();
         matches!(
             tiles[point.y][point.x],
-            Tile::Door { .. } | Tile::Secret { visible: true }
+            Tile::Door { .. } | Tile::Secret { visible: true, .. }
         )
     }
 
@@ -182,7 +182,7 @@ impl Map {
             Tile::Wall { .. } => Tile::Wall { visible },
             Tile::Floor { cursed, .. } => Tile::Floor { cursed, visible },
             Tile::Pit { .. } => Tile::Pit { visible },
-            Tile::Secret { .. } => Tile::Secret { visible },
+            Tile::Secret { rarity, .. } => Tile::Secret { rarity, visible },
             Tile::SecretFloor { .. } => Tile::SecretFloor { visible },
             Tile::Door { open, .. } => Tile::Door { open, visible },
             Tile::Obelisk {
@@ -192,11 +192,35 @@ impl Map {
                 reduce_fov_radius,
                 ..
             } => Tile::Obelisk {
-                visible,
                 curse,
                 fov,
                 damage_hp,
                 reduce_fov_radius,
+                visible,
+            },
+            Tile::Wither {
+                hp, damage, fov, ..
+            } => Tile::Wither {
+                hp,
+                damage,
+                fov,
+                visible,
+            },
+            Tile::Bat {
+                hp, damage, fov, ..
+            } => Tile::Bat {
+                hp,
+                damage,
+                fov,
+                visible,
+            },
+            Tile::Brute {
+                hp, damage, fov, ..
+            } => Tile::Brute {
+                hp,
+                damage,
+                fov,
+                visible,
             },
             // Update other tile types as needed
             _ => tile,

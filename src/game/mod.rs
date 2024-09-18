@@ -60,6 +60,8 @@ impl Game {
         let mut rng = rand::thread_rng();
         let random_room = rooms.choose(&mut rng).expect("No rooms generated");
         let player_position = random_room.center();
+        // nuke the spawn room for a good time
+        random_room.reset(&tiles_arc);
 
         // Place the player tile '@' in the selected room
         {
@@ -68,6 +70,7 @@ impl Game {
                 is_dead: false,
                 is_cursed: false,
             };
+            tiles[player_position.y + 1][player_position.x] = Tile::Archway { locked: true };
         }
 
         // Create the Map instance from the generated tiles

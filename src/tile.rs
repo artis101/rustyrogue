@@ -1,3 +1,4 @@
+use rand::Rng;
 use ratatui::style::Color as RatatuiColor;
 use sdl2::pixels::Color as SDLColor;
 
@@ -38,6 +39,8 @@ pub enum Tile {
     },
     Secret {
         visible: bool,
+        rarity: u32, // rarity is an order of magnitude, e.g., 1 in 10, 1 in 100, 1 in 1000 which
+                     // determines how good the secret is when revealed
     }, // secrets reveal themselves when you interact
     SecretFloor {
         visible: bool,
@@ -54,6 +57,25 @@ pub enum Tile {
     Pit {
         visible: bool,
     }, // falling into a pit kills the player
+    // enemies (wither, bat, brute)
+    Wither {
+        visible: bool,
+        hp: u32,
+        damage: u32,
+        fov: u32,
+    },
+    Bat {
+        visible: bool,
+        hp: u32,
+        damage: u32,
+        fov: u32,
+    },
+    Brute {
+        visible: bool,
+        hp: u32,
+        damage: u32,
+        fov: u32,
+    },
     // empty
     Empty,
 }
@@ -69,14 +91,20 @@ impl Tile {
             Tile::Player { .. } => '@',
             Tile::Door { open: true, .. } => '+',
             Tile::Door { open: false, .. } => '/',
-            Tile::Secret { visible: true } => '?',
+            Tile::Secret { visible: true, .. } => '?',
             Tile::Pit { visible: true } => 'V',
             Tile::Obelisk { visible: true, .. } => '|',
+            Tile::Wither { visible: true, .. } => 'W',
+            Tile::Bat { visible: true, .. } => 'B',
+            Tile::Brute { visible: true, .. } => 'U',
             // FOV tiles + enemies
             Tile::Floor { .. }
             | Tile::SecretFloor { visible: false }
-            | Tile::Secret { visible: false }
+            | Tile::Secret { visible: false, .. }
             | Tile::Pit { visible: false }
+            | Tile::Wither { visible: false, .. }
+            | Tile::Bat { visible: false, .. }
+            | Tile::Brute { visible: false, .. }
             | Tile::Obelisk { visible: false, .. } => '·',
             Tile::Empty => ' ',
         }
@@ -118,9 +146,15 @@ impl Tile {
             }
             Tile::Obelisk { visible: false, .. } => INVISIBLE_FLOOR_COLOR,
             Tile::Secret { visible: false, .. } => INVISIBLE_FLOOR_COLOR,
+            Tile::Wither { visible: false, .. } => INVISIBLE_FLOOR_COLOR,
+            Tile::Bat { visible: false, .. } => INVISIBLE_FLOOR_COLOR,
+            Tile::Brute { visible: false, .. } => INVISIBLE_FLOOR_COLOR,
             Tile::Door { visible: true, .. } => RatatuiColor::Yellow,
-            Tile::Secret { visible: true } => RatatuiColor::LightYellow,
+            Tile::Secret { visible: true, .. } => RatatuiColor::LightYellow,
             Tile::Obelisk { visible: true, .. } => RatatuiColor::Magenta,
+            Tile::Wither { visible: true, .. }
+            | Tile::Bat { visible: true, .. }
+            | Tile::Brute { visible: true, .. } => RatatuiColor::Red,
             _ => RatatuiColor::Reset,
         }
     }
@@ -154,6 +188,9 @@ impl Tile {
             Tile::Pit { .. } => SDLColor::RGB(50, 50, 50),
             Tile::Secret { .. } => SDLColor::RGB(255, 255, 0),
             Tile::Obelisk { .. } => SDLColor::RGB(255, 0, 255),
+            Tile::Wither { .. } => SDLColor::RGB(255, 0, 0),
+            Tile::Bat { .. } => SDLColor::RGB(0, 255, 0),
+            Tile::Brute { .. } => SDLColor::RGB(0, 0, 255),
             Tile::Empty => SDLColor::RGB(0, 0, 0),
         }
     }
@@ -195,15 +232,38 @@ impl Tile {
                 open: false,
                 visible: false,
             },
+            // pits are deadly if you step into them
             'V' => Tile::Pit { visible: false },
-            '?' => Tile::Secret { visible: false },
+            '?' => Tile::Secret {
+                visible: false,
+                // set rarity to random number of magnitude i.e. 1, 10, 100, 1000
+                rarity: 10_u32.pow(rand::thread_rng().gen_range(0..=3)),
+            },
             '_' => Tile::SecretFloor { visible: false },
             '|' => Tile::Obelisk {
                 visible: false,
                 fov: 6,
                 curse: true,
                 damage_hp: 1,
-                reduce_fov_radius: 2, // essentially halves the FOV
+                reduce_fov_radius: 3,
+            },
+            'W' => Tile::Wither {
+                visible: false,
+                hp: 3,
+                damage: 2,
+                fov: 8,
+            },
+            'B' => Tile::Bat {
+                visible: false,
+                hp: 1,
+                damage: 1,
+                fov: 6,
+            },
+            'U' => Tile::Brute {
+                visible: false,
+                hp: 20,
+                damage: 10,
+                fov: 4,
             },
             _ => Tile::Empty,
         }

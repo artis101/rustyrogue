@@ -1,7 +1,6 @@
 use crate::generator::room::Room;
 use crate::map::types::{Coordinate, GameMapTiles, Point};
 use crate::tile::Tile;
-use rand::seq::SliceRandom;
 use rand::Rng;
 use rayon::prelude::*;
 use std::sync::{Arc, RwLock};
@@ -44,8 +43,7 @@ pub struct MapGenerator {
 }
 
 impl MapGenerator {
-    const MAIN_DIRECTION_PROBABILITY: f64 = 0.7;
-    const RANDOM_DIRECTION_PROBABILITY: f64 = 0.3;
+    const TURN_PROBABILITY: f64 = 0.2; // 20% chance to turn at each step
 
     pub fn new(width: Coordinate, height: Coordinate) -> Self {
         MapGenerator {
@@ -217,11 +215,11 @@ impl MapGenerator {
         }
     }
 
-    fn populate_all_rooms(&self) {
+    fn populate_all_rooms(&mut self) {
         let tiles = Arc::clone(&self.tiles);
 
         // Use Rayon to populate rooms in parallel
-        self.rooms.par_iter().for_each(|room| {
+        self.rooms.par_iter_mut().for_each(|room| {
             let tiles_clone = Arc::clone(&tiles);
             room.populate(&tiles_clone);
         });
@@ -270,45 +268,46 @@ impl MapGenerator {
         let mut rng = rand::thread_rng();
         let mut current = start;
 
+        // Randomly choose the initial direction
+        let mut direction = if rng.gen_bool(0.5) { 'x' } else { 'y' };
+
         while current != end {
             self.carve_corridor(current.x, current.y);
 
             let dx = end.x as isize - current.x as isize;
             let dy = end.y as isize - current.y as isize;
 
-            let mut directions = Vec::new();
+            // Check if we need to change direction
+            let at_end_in_direction = match direction {
+                'x' => dx == 0,
+                'y' => dy == 0,
+                _ => false,
+            };
 
-            // Bias towards moving in the general direction of the end point
-            if dx != 0 && rng.gen_bool(Self::MAIN_DIRECTION_PROBABILITY) {
-                directions.push((dx.signum(), 0));
-            }
-            if dy != 0 && rng.gen_bool(Self::MAIN_DIRECTION_PROBABILITY) {
-                directions.push((0, dy.signum()));
-            }
-
-            // Add random directions with less probability
-            if rng.gen_bool(Self::RANDOM_DIRECTION_PROBABILITY) {
-                directions.push((-1, 0));
-                directions.push((1, 0));
-                directions.push((0, -1));
-                directions.push((0, 1));
+            // Decide whether to turn based on TURN_PROBABILITY
+            if at_end_in_direction || rng.gen_bool(Self::TURN_PROBABILITY) {
+                // Change direction
+                direction = if direction == 'x' { 'y' } else { 'x' };
             }
 
-            // If no direction was chosen due to probabilities, default to moving towards the end
-            if directions.is_empty() {
-                if dx != 0 {
-                    directions.push((dx.signum(), 0));
+            // Move in the current direction
+            match direction {
+                'x' => {
+                    if dx != 0 {
+                        current.x = (current.x as isize + dx.signum())
+                            .clamp(0, (self.width - 1) as isize)
+                            as Coordinate;
+                    }
                 }
-                if dy != 0 {
-                    directions.push((0, dy.signum()));
+                'y' => {
+                    if dy != 0 {
+                        current.y = (current.y as isize + dy.signum())
+                            .clamp(0, (self.height - 1) as isize)
+                            as Coordinate;
+                    }
                 }
+                _ => {}
             }
-
-            let (dx, dy) = *directions.choose(&mut rng).unwrap();
-
-            current.x = (current.x as isize + dx).clamp(0, (self.width - 1) as isize) as Coordinate;
-            current.y =
-                (current.y as isize + dy).clamp(0, (self.height - 1) as isize) as Coordinate;
         }
     }
 
