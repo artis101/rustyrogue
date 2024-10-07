@@ -113,6 +113,15 @@ impl Map {
 
     pub fn update_fov(&mut self, pov: Point, fov_radius: u32) {
         self.clear_visible_tiles();
+
+        let is_player_cursed = matches!(
+            self.get_tile(pov),
+            Tile::Player {
+                is_cursed: true,
+                ..
+            }
+        );
+
         let radius_squared = (fov_radius * fov_radius) as i32;
 
         for dy in -(fov_radius as i32)..=fov_radius as i32 {
@@ -123,7 +132,14 @@ impl Map {
 
                     if (0..self.width() as i32).contains(&x)
                         && (0..self.height() as i32).contains(&y)
-                        && self.has_line_of_sight(pov.x, pov.y, x as usize, y as usize)
+                        && self.has_line_of_sight(
+                            pov.x,
+                            pov.y,
+                            x as usize,
+                            y as usize,
+                            false,
+                            is_player_cursed,
+                        )
                     {
                         let point = Point::new(x as Coordinate, y as Coordinate);
                         self.visible_tiles.insert(point);
@@ -134,7 +150,15 @@ impl Map {
         }
     }
 
-    fn has_line_of_sight(&self, x0: usize, y0: usize, x1: usize, y1: usize) -> bool {
+    fn has_line_of_sight(
+        &self,
+        x0: usize,
+        y0: usize,
+        x1: usize,
+        y1: usize,
+        by_obelisk: bool,
+        is_player_cursed: bool,
+    ) -> bool {
         let (mut x0, mut y0) = (x0 as i32, y0 as i32);
         let (x1, y1) = (x1 as i32, y1 as i32);
         let (dx, dy) = ((x1 - x0).abs(), -(y1 - y0).abs());
@@ -148,7 +172,7 @@ impl Map {
 
             let point = Point::new(x0 as Coordinate, y0 as Coordinate);
 
-            if self.is_opaque(point) {
+            if self.is_opaque(point, by_obelisk, is_player_cursed) {
                 return false;
             }
 
@@ -164,17 +188,42 @@ impl Map {
         }
     }
 
-    fn is_opaque(&self, point: Point) -> bool {
-        matches!(
-            self.get_tile(point),
-            Tile::Wall { .. }
-                | Tile::Door { open: false, .. }
-                | Tile::Column { .. }
-                | Tile::Secret { .. }
-                | Tile::Wither { .. }
-                | Tile::Bat { .. }
-                | Tile::Brute { .. }
-        )
+    fn is_opaque(&self, point: Point, by_obelisk: bool, is_player_cursed: bool) -> bool {
+        let tile = self.get_tile(point);
+        if by_obelisk {
+            matches!(
+                tile,
+                Tile::Wall { .. }
+                    | Tile::Door { open: false, .. }
+                    | Tile::Column { .. }
+                    | Tile::Pit { .. }
+            )
+        } else if is_player_cursed {
+            // you can see around inside the curse area
+            matches!(
+                tile,
+                Tile::Wall { .. }
+                    | Tile::Door { open: false, .. }
+                    | Tile::Column { .. }
+                    | Tile::Secret { .. }
+                    | Tile::Wither { .. }
+                    | Tile::Bat { .. }
+                    | Tile::Brute { .. }
+            )
+        } else {
+            // you cannot see inside cursed areas
+            matches!(
+                tile,
+                Tile::Wall { .. }
+                    | Tile::Floor { cursed: true, .. }
+                    | Tile::Door { open: false, .. }
+                    | Tile::Column { .. }
+                    | Tile::Secret { .. }
+                    | Tile::Wither { .. }
+                    | Tile::Bat { .. }
+                    | Tile::Brute { .. }
+            )
+        }
     }
 
     fn update_tile_visibility(&mut self, point: Point, visible: bool) {
@@ -345,7 +394,7 @@ impl Map {
                 let point = Point::new(x, y);
 
                 if let Tile::Obelisk { curse: true, .. } = self.get_tile(point) {
-                    if self.has_line_of_sight(point.x, point.y, pov.x, pov.y) {
+                    if self.has_line_of_sight(point.x, point.y, pov.x, pov.y, true, false) {
                         return Some(*tile);
                     }
                 }
@@ -366,7 +415,9 @@ impl Map {
 
                     if (0..self.width() as i32).contains(&x)
                         && (0..self.height() as i32).contains(&y)
-                        && self.has_line_of_sight(x as usize, y as usize, center.x, center.y)
+                        && self.has_line_of_sight(
+                            x as usize, y as usize, center.x, center.y, true, false,
+                        )
                     {
                         let point = Point::new(x as Coordinate, y as Coordinate);
 
